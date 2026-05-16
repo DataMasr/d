@@ -7,7 +7,7 @@ async function initAuth() {
 
   if (!session) {
     if (!window.location.pathname.includes('login.html')) {
-      window.location.href = 'client_orders.html';
+      window.location.href = 'login.html';
     }
     return null;
   }
@@ -65,11 +65,9 @@ function hasRole(roles) {
 }
 
 function enforceRoutePermissions() {
-  // No restrictions, everyone is admin
 }
 
 function hideUnauthorizedElements() {
-  // Show everything
 }
 
 async function login(email, password) {
@@ -81,7 +79,7 @@ async function login(email, password) {
     return false;
   }
 
-  window.location.href = 'index.html';
+  window.location.href = 'client_orders.html';
   return true;
 }
 
