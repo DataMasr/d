@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الحسابات والماليات - نظام الإدارة</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+
+<body>
+  <main class="main-content">
+    <div class="page-header">
+      <h1 style="display:flex; align-items:center; gap:0.6rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" style="width:30px;height:30px;flex-shrink:0;">
+          <rect x="2" y="4" width="20" height="16" rx="3" />
+          <path d="M2 10h20" opacity="0.4" />
+          <path d="M6 15h4M14 15h4" />
+        </svg>
+        إدارة الحسابات
+      </h1>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
+      <div class="stat-card" style="border-right:4px solid var(--success);">
+        <h3 style="display:flex;align-items:center;gap:0.5rem;"><svg viewBox="0 0 24 24" width="20" height="20"
+            fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+            <circle cx="12" cy="12" r="4" fill="var(--success)" opacity="0.2" />
+          </svg> متبقي لي (عملاء)</h3>
+        <div class="value" id="stat-rec-remaining" style="color:var(--success);">0</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.4rem;">ديون العملاء المستحقة</div>
+      </div>
+      <div class="stat-card" style="border-right:4px solid var(--error);">
+        <h3 style="display:flex;align-items:center;gap:0.5rem;"><svg viewBox="0 0 24 24" width="20" height="20"
+            fill="none" stroke="var(--error)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg> متبقي عليّ (موردين)</h3>
+        <div class="value" id="stat-pay-remaining" style="color:var(--error);">0</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.4rem;">المستحقات للموردين</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem; border-top:4px solid var(--success);">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--success)" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+          </svg>
+          <div>
+            <h2 style="color:var(--success); margin:0;">فلوس ليا — ديون العملاء</h2>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">الطلبيات النشطة التي لم تُسدَّد بالكامل بعد
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>اسم العميل</th>
+                <th>الإجمالي</th>
+                <th>المدفوع</th>
+                <th>المتبقي</th>
+                <th>موعد التسليم</th>
+                <th style="text-align:center;">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="receivable-table-body">
+              <tr>
+                <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">جاري التحميل...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-top:4px solid var(--error);">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--error)" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" />
+            <path d="M1 10h22" opacity="0.3" />
+            <path d="M6 16h.01M10 16h.01" />
+          </svg>
+          <div>
+            <h2 style="color:var(--error); margin:0;">فلوس عليا — ديون الموردين</h2>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">الالتزامات والمستحقات المستحقة للموردين</p>
+          </div>
+        </div>
+        <button class="btn btn-danger-outline" onclick="openCreateAccountModal('payable')" style="gap:0.4rem;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          مورد جديد
+        </button>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>اسم المورد</th>
+                <th>الإجمالي</th>
+                <th>المدفوع</th>
+                <th>المتبقي عليّ</th>
+                <th>موعد الدفعة</th>
+                <th style="text-align:center;">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="payable-table-body">
+              <tr>
+                <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">جاري التحميل...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="create-acc-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="create-acc-title">إضافة حساب مورد (فلوس عليا)</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('create-acc-modal')" style="padding:0.5rem">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="create-acc-form">
+            <input type="hidden" id="acc-type" value="payable">
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="acc-name">اسم الشركة أو المورد *</label>
+              <input type="text" id="acc-name" required placeholder="مثال: شركة التغليف">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="acc-total">إجمالي المبلغ *</label>
+              <input type="number" id="acc-total" required min="0" placeholder="مثال: 10000">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="acc-paid">المبلغ المدفوع (الواصل) *</label>
+              <input type="number" id="acc-paid" required min="0" placeholder="مثال: 5000">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="acc-date">موعد الدفعة القادمة (اختياري للإشعارات)</label>
+              <input type="date" id="acc-date">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label for="acc-notes">ملاحظات (طبيعة البضاعة أو الدفعات)</label>
+              <input type="text" id="acc-notes" placeholder="دفعات على شهرين...">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="submitCreateAccount()">حفظ الحساب</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('create-acc-modal')">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="update-payment-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>تحديث المبالغ المدفوعة</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('update-payment-modal')" style="padding:0.5rem">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="update-payment-form">
+            <input type="hidden" id="upd-acc-id">
+            <input type="hidden" id="upd-acc-type">
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="upd-acc-paid">إجمالي المبلغ المدفوع حتى الآن *</label>
+              <input type="number" id="upd-acc-paid" required min="0">
+              <small style="color:var(--text-muted)">قم بزيادة هذا الرقم ليعكس الدفعات الجديدة.</small>
+            </div>
+
+            <div class="form-group" id="date-group-wrapper" style="margin-bottom: 1.5rem;">
+              <label for="upd-acc-date">تحديث موعد الدفعة (اختياري)</label>
+              <input type="date" id="upd-acc-date">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="submitUpdatePayment()">حفظ التحديث</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('update-payment-modal')">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let alertItems = [];
+
+      function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+      }
+
+      function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+      }
+
+      function openCreateAccountModal(type) {
+        document.getElementById('create-acc-form').reset();
+        document.getElementById('acc-type').value = type;
+        openModal('create-acc-modal');
+      }
+
+      async function submitCreateAccount() {
+        const form = document.getElementById('create-acc-form');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const type = document.getElementById('acc-type').value;
+        const name = document.getElementById('acc-name').value;
+        const total = parseFloat(document.getElementById('acc-total').value || 0);
+        const paid = parseFloat(document.getElementById('acc-paid').value || 0);
+        const date = document.getElementById('acc-date').value || null;
+        const notes = document.getElementById('acc-notes').value;
+
+        try {
+          showAlert('جاري حفظ الحساب...', 'pending');
+          const sb = getSupabase();
+
+          const { error } = await sb.from('accounts').insert([{
+            person_name: name,
+            account_type: type,
+            total_amount: total,
+            paid_amount: paid,
+            due_date: date,
+            notes: notes
+          }]);
+
+          if (error) throw error;
+
+          showAlert('تم إضافة الحساب بنجاح!', 'success');
+          closeModal('create-acc-modal');
+          await initAccountsPage();
+        } catch (e) {
+          showAlert('فشل الإضافة: ' + e.message, 'error');
+        }
+      }
+
+      function openUpdatePaymentModal(id, type, currentPaid, currentDate) {
+        document.getElementById('upd-acc-id').value = id;
+        document.getElementById('upd-acc-type').value = type;
+        document.getElementById('upd-acc-paid').value = currentPaid;
+
+        if (type === 'receivable') {
+
+          document.getElementById('upd-acc-date').value = currentDate || '';
+        } else {
+          document.getElementById('upd-acc-date').value = currentDate || '';
+        }
+
+        openModal('update-payment-modal');
+      }
+
+      async function submitUpdatePayment() {
+        const id = document.getElementById('upd-acc-id').value;
+        const type = document.getElementById('upd-acc-type').value;
+        const paid = parseFloat(document.getElementById('upd-acc-paid').value || 0);
+        const date = document.getElementById('upd-acc-date').value || null;
+
+        try {
+          showAlert('جاري التحديث...', 'pending');
+          const sb = getSupabase();
+          let error;
+
+          if (type === 'receivable') {
+            const res = await sb.from('client_orders').update({
+              paid_amount: paid,
+              delivery_date: date
+            }).eq('id', id);
+            error = res.error;
+          } else {
+            const res = await sb.from('accounts').update({
+              paid_amount: paid,
+              due_date: date
+            }).eq('id', id);
+            error = res.error;
+          }
+
+          if (error) throw error;
+
+          showAlert('تم التحديث بنجاح!', 'success');
+          closeModal('update-payment-modal');
+          await initAccountsPage();
+        } catch (e) {
+          showAlert('فشل التحديث: ' + e.message, 'error');
+        }
+      }
+
+      async function deleteAccount(id) {
+        if (!(await customConfirm('هل أنت متأكد من حذف هذا الحساب (المورد) نهائياً؟'))) return;
+        try {
+          const sb = getSupabase();
+          const { error } = await sb.from('accounts').delete().eq('id', id);
+          if (error) throw error;
+          showAlert('تم الحذف بنجاح', 'success');
+          await initAccountsPage();
+        } catch (e) {
+          showAlert('فشل الحذف: ' + e.message, 'error');
+        }
+      }
+
+      async function initAccountsPage() {
+        await initAuth();
+        const sb = getSupabase();
+
+        try {
+          const { data: payables, error: pError } = await sb.from('accounts').select('*').eq('account_type', 'payable').order('created_at', { ascending: false });
+          if (pError) throw pError;
+
+          const { data: clients, error: cError } = await sb.from('client_orders').select('*').eq('archived', false).order('created_at', { ascending: false });
+          if (cError) throw cError;
+
+          const recBody = document.getElementById('receivable-table-body');
+          const payBody = document.getElementById('payable-table-body');
+
+          recBody.innerHTML = '';
+          payBody.innerHTML = '';
+
+          let hasRec = false;
+          let hasPay = false;
+
+          let recTotalSum = 0;
+          let recPaidSum = 0;
+
+          let payTotalSum = 0;
+          let payPaidSum = 0;
+
+          (clients || []).forEach(order => {
+            const remaining = order.total_price - order.paid_amount;
+            if (remaining <= 0) return;
+
+            const isFullyPaid = remaining <= 0;
+            const dateStr = order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('ar-EG') : '-';
+
+            recTotalSum += (order.total_price || 0);
+            recPaidSum += (order.paid_amount || 0);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>
+                <strong>${order.client_name}</strong>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">طلبية: ${order.stage || ''}</div>
+              </td>
+              <td><strong>${order.total_price}</strong></td>
+              <td style="color:var(--success)">${order.paid_amount}</td>
+              <td>
+                <strong style="color:var(--error)">${remaining}</strong>
+              </td>
+              <td style="direction:ltr; text-align:right;">${dateStr}<br><span style="font-size:0.7rem;color:var(--text-muted)">${order.payment_plan || ''}</span></td>
+              <td style="text-align:center;">
+                <button onclick="openUpdatePaymentModal('${order.id}', 'receivable', ${order.paid_amount || 0}, '${order.delivery_date || ''}')"
+                  style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.85rem;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.35rem;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  تحديث
+                </button>
+              </td>
+            `;
+            recBody.appendChild(tr);
+            hasRec = true;
+          });
+
+          (payables || []).forEach(acc => {
+            const remaining = acc.total_amount - acc.paid_amount;
+
+            const isFullyPaid = remaining <= 0;
+            const dateStr = acc.due_date ? new Date(acc.due_date).toLocaleDateString('ar-EG') : '-';
+
+            payTotalSum += (acc.total_amount || 0);
+            payPaidSum += (acc.paid_amount || 0);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>
+                <strong>${acc.person_name}</strong>
+                ${acc.notes ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">${acc.notes}</div>` : ''}
+              </td>
+              <td><strong>${acc.total_amount}</strong></td>
+              <td style="color:var(--success)">${acc.paid_amount}</td>
+              <td style="color:${isFullyPaid ? 'var(--text-muted)' : 'var(--error)'}">
+                ${isFullyPaid ? 'خالص' : `<strong>${remaining}</strong>`}
+              </td>
+              <td style="direction:ltr; text-align:right;">${dateStr}</td>
+              <td>
+                <div style="display:flex;gap:0.4rem;justify-content:center;flex-wrap:wrap;">
+                  <button onclick="openUpdatePaymentModal('${acc.id}', 'payable', ${acc.paid_amount || 0}, '${acc.due_date || ''}')"
+                    style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    تحديث
+                  </button>
+                  <button onclick="deleteAccount('${acc.id}')"
+                    style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    حذف
+                  </button>
+                </div>
+              </td>
+            `;
+            payBody.appendChild(tr);
+            hasPay = true;
+          });
+
+          if (!hasRec) recBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا يوجد حسابات حالياً</td></tr>`;
+          if (!hasPay) payBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا يوجد حسابات حالياً</td></tr>`;
+
+          document.getElementById('stat-rec-remaining').textContent = Math.max(0, recTotalSum - recPaidSum).toLocaleString('en-US');
+          document.getElementById('stat-pay-remaining').textContent = Math.max(0, payTotalSum - payPaidSum).toLocaleString('en-US');
+
+        } catch (e) {
+          console.error(e);
+          const errHTML = `<tr><td colspan="6" style="text-align:center;color:var(--error)">تأكد من إنشاء الجداول بشكل صحيح: ${e.message}</td></tr>`;
+          document.getElementById('receivable-table-body').innerHTML = errHTML;
+          document.getElementById('payable-table-body').innerHTML = errHTML;
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        await initAccountsPage();
+
+        const sb = getSupabase();
+
+        sb.channel('accounts-realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'accounts' }, () => {
+            initAccountsPage();
+          })
+          .subscribe();
+
+        sb.channel('orders-for-accounts')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'client_orders' }, () => {
+            initAccountsPage();
+          })
+          .subscribe();
+
+        setInterval(initAccountsPage, 5000);
+      });
+    </script>
+</body>
+
+</html>
+

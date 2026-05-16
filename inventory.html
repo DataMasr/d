@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>المخازن - نظام الإدارة</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+
+<body>
+  <main class="main-content">
+    <div class="page-header">
+      <h1 style="display:flex; align-items:center; gap:0.6rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" style="width:30px;height:30px;flex-shrink:0;">
+          <path
+            d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+          <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" opacity="0.4" />
+        </svg>
+        إدارة المخازن
+      </h1>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn btn-primary" onclick="openCreateItemModal()">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width:20px;height:20px">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          تعريف صنف جديد
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>أرصدة الأصناف في المخازن</h2>
+      </div>
+      <div class="card-body">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>اسم الصنف</th>
+                <th>مخزن 1</th>
+                <th>مخزن 2</th>
+                <th>مخزن 3</th>
+                <th>إجمالي الكميه</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body">
+              <tr>
+                <td colspan="6" style="text-align:center;color:var(--text-muted)">جاري التحميل...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    
+    <div id="create-item-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>تعريف صنف جديد في المخازن</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('create-item-modal')" style="padding:0.5rem">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="create-item-form">
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="new-item-name">اختر الصنف (من قائمة الأسعار) *</label>
+              <select id="new-item-name" required>
+                <option value="">جاري تحميل الأصناف...</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label>الرصيد الافتتاحي (اختياري)</label>
+              <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+                <div>
+                  <label for="new-wh1" style="font-size:0.75rem;color:var(--text-muted)">مخزن 1</label>
+                  <input type="number" id="new-wh1" min="0" placeholder="0" style="width:100%">
+                </div>
+                <div>
+                  <label for="new-wh2" style="font-size:0.75rem;color:var(--text-muted)">مخزن 2</label>
+                  <input type="number" id="new-wh2" min="0" placeholder="0" style="width:100%">
+                </div>
+                <div>
+                  <label for="new-wh3" style="font-size:0.75rem;color:var(--text-muted)">مخزن 3</label>
+                  <input type="number" id="new-wh3" min="0" placeholder="0" style="width:100%">
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="submitCreateItem()">حفظ الصنف</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('create-item-modal')">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    
+    <div id="edit-balances-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="edit-balances-title">تعديل كميات المخازن</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('edit-balances-modal')" style="padding:0.5rem">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-balances-form">
+            <input type="hidden" id="edit-item-id">
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label>الأرصدة الحالية في كل مخزن</label>
+              <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+                <div>
+                  <label for="edit-wh1" style="font-size:0.75rem;color:var(--text-muted)">مخزن 1</label>
+                  <input type="number" id="edit-wh1" min="0" required style="width:100%">
+                </div>
+                <div>
+                  <label for="edit-wh2" style="font-size:0.75rem;color:var(--text-muted)">مخزن 2</label>
+                  <input type="number" id="edit-wh2" min="0" required style="width:100%">
+                </div>
+                <div>
+                  <label for="edit-wh3" style="font-size:0.75rem;color:var(--text-muted)">مخزن 3</label>
+                  <input type="number" id="edit-wh3" min="0" required style="width:100%">
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="submitEditBalances()">حفظ التعديلات</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('edit-balances-modal')">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="card" style="margin-top: 2rem;">
+      <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="display:flex; align-items:center; gap:0.5rem; color:var(--text-main); margin:0;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          سجل
+        </h2>
+      </div>
+      <div class="card-body">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>التاريخ والوقت</th>
+                <th>اسم الصنف</th>
+                <th>المخزن</th>
+                <th>نوع الحركة</th>
+                <th>الكمية</th>
+                <th>ملاحظات</th>
+              </tr>
+            </thead>
+            <tbody id="global-logs-table-body">
+              <tr>
+                <td colspan="6" style="text-align:center;">جاري التحميل...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script>
+    let inventoryData = [];
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    async function openCreateItemModal() {
+      const select = document.getElementById('new-item-name');
+      select.innerHTML = '<option value="">جاري التحميل...</option>';
+
+      try {
+        const sb = getSupabase();
+
+        const { data: prices, error } = await sb.from('prices').select('item_name').order('item_name', { ascending: true });
+
+        if (error) throw error;
+
+        const existingNames = inventoryData.map(i => i.item_name);
+        const filteredPrices = (prices || []).filter(p => !existingNames.includes(p.item_name));
+
+        if (filteredPrices.length === 0) {
+          select.innerHTML = '<option value="">جميع الأصناف معرفة بالفعل أو القائمة فارغة</option>';
+        } else {
+          select.innerHTML = '<option value="">-- اختر الصنف --</option>';
+          filteredPrices.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.item_name;
+            opt.textContent = p.item_name;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        select.innerHTML = '<option value="">فشل تحميل القائمة</option>';
+      }
+
+      openModal('create-item-modal');
+    }
+
+    function openEditBalances(itemId) {
+      const item = inventoryData.find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('edit-item-id').value = item.id;
+      document.getElementById('edit-balances-title').textContent = `تعديل أرصدة: ${item.item_name}`;
+      document.getElementById('edit-wh1').value = item.wh_1_qty || 0;
+      document.getElementById('edit-wh2').value = item.wh_2_qty || 0;
+      document.getElementById('edit-wh3').value = item.wh_3_qty || 0;
+
+      openModal('edit-balances-modal');
+    }
+
+    async function submitCreateItem() {
+      const form = document.getElementById('create-item-form');
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      const name = document.getElementById('new-item-name').value;
+      const wh1 = parseInt(document.getElementById('new-wh1').value || '0', 10);
+      const wh2 = parseInt(document.getElementById('new-wh2').value || '0', 10);
+      const wh3 = parseInt(document.getElementById('new-wh3').value || '0', 10);
+
+      try {
+        showAlert('جاري حفظ الصنف...', 'pending');
+        const sb = getSupabase();
+
+        const { error } = await sb.from('inventory').insert([{
+          item_name: name,
+          wh_1_qty: wh1,
+          wh_2_qty: wh2,
+          wh_3_qty: wh3
+        }]);
+
+        if (error) throw error;
+
+        let logsToInsert = [];
+        if (wh1 > 0) logsToInsert.push({ item_name: name, action_type: 'إضافة', quantity: wh1, warehouse: 'مخزن 1', notes: 'رصيد افتتاحي' });
+        if (wh2 > 0) logsToInsert.push({ item_name: name, action_type: 'إضافة', quantity: wh2, warehouse: 'مخزن 2', notes: 'رصيد افتتاحي' });
+        if (wh3 > 0) logsToInsert.push({ item_name: name, action_type: 'إضافة', quantity: wh3, warehouse: 'مخزن 3', notes: 'رصيد افتتاحي' });
+
+        if (logsToInsert.length > 0) {
+          const { error: logErr } = await sb.from('inventory_logs').insert(logsToInsert);
+          if (logErr) throw logErr;
+        }
+
+        showAlert('تم إضافة الصنف بنجاح!', 'success');
+        closeModal('create-item-modal');
+        form.reset();
+        await initInventoryPage();
+      } catch (e) {
+        showAlert('فشل الإضافة: ' + e.message, 'error');
+      }
+    }
+
+    async function submitEditBalances() {
+      const form = document.getElementById('edit-balances-form');
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      const itemId = document.getElementById('edit-item-id').value;
+      const wh1 = parseInt(document.getElementById('edit-wh1').value || '0', 10);
+      const wh2 = parseInt(document.getElementById('edit-wh2').value || '0', 10);
+      const wh3 = parseInt(document.getElementById('edit-wh3').value || '0', 10);
+
+      try {
+        showAlert('جاري تحديث الأرصدة...', 'pending');
+        const sb = getSupabase();
+
+        const oldItem = inventoryData.find(i => i.id === itemId);
+        const diff1 = wh1 - (oldItem.wh_1_qty || 0);
+        const diff2 = wh2 - (oldItem.wh_2_qty || 0);
+        const diff3 = wh3 - (oldItem.wh_3_qty || 0);
+
+        const { error } = await sb.from('inventory').update({
+          wh_1_qty: wh1,
+          wh_2_qty: wh2,
+          wh_3_qty: wh3
+        }).eq('id', itemId);
+
+        if (error) throw error;
+
+        let logsToInsert = [];
+        if (diff1 !== 0) logsToInsert.push({ item_name: oldItem.item_name, action_type: diff1 > 0 ? 'إضافة' : 'سحب', quantity: Math.abs(diff1), warehouse: 'مخزن 1', notes: 'تعديل يدوي للأرصدة' });
+        if (diff2 !== 0) logsToInsert.push({ item_name: oldItem.item_name, action_type: diff2 > 0 ? 'إضافة' : 'سحب', quantity: Math.abs(diff2), warehouse: 'مخزن 2', notes: 'تعديل يدوي للأرصدة' });
+        if (diff3 !== 0) logsToInsert.push({ item_name: oldItem.item_name, action_type: diff3 > 0 ? 'إضافة' : 'سحب', quantity: Math.abs(diff3), warehouse: 'مخزن 3', notes: 'تعديل يدوي للأرصدة' });
+
+        if (logsToInsert.length > 0) {
+          const { error: logErr } = await sb.from('inventory_logs').insert(logsToInsert);
+          if (logErr) throw logErr;
+        }
+
+        showAlert('تم تحديث الأرصدة بنجاح!', 'success');
+        closeModal('edit-balances-modal');
+        await initInventoryPage();
+      } catch (e) {
+        showAlert('فشل التحديث: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteInventoryItem(id) {
+      if (!(await customConfirm('هل أنت متأكد من حذف هذا الصنف من المخازن نهائياً؟'))) return;
+      try {
+        const sb = getSupabase();
+        const { error } = await sb.from('inventory').delete().eq('id', id);
+        if (error) throw error;
+        showAlert('تم حذف الصنف بنجاح', 'success');
+        await initInventoryPage();
+      } catch (e) {
+        showAlert('فشل الحذف: ' + e.message, 'error');
+      }
+    }
+
+    async function fetchGlobalLogs() {
+      try {
+        const sb = getSupabase();
+        const { data, error } = await sb.from('inventory_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (error) throw error;
+
+        const tbody = document.getElementById('global-logs-table-body');
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted)">لا توجد حركات مسجلة حالياً</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(log => {
+          const dateObj = new Date(log.created_at);
+          const dateStr = dateObj.toLocaleDateString('ar-EG');
+          const timeStr = dateObj.toLocaleTimeString('ar-EG');
+
+          const actionColor = log.action_type === 'إضافة' || log.action_type === 'إرجاع' ? 'var(--success)' : 'var(--error)';
+          const actionBg = log.action_type === 'إضافة' || log.action_type === 'إرجاع' ? '#f0fdf4' : '#fee2e2';
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+              <td>
+                <div style="font-weight:700;">${dateStr}</div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">${timeStr}</div>
+              </td>
+              <td><strong>${log.item_name}</strong></td>
+              <td><strong>${log.warehouse}</strong></td>
+              <td>
+                <span style="background:${actionBg}; color:${actionColor}; padding:0.2rem 0.6rem; border-radius:50px; font-size:0.8rem; font-weight:700;">
+                  ${log.action_type}
+                </span>
+              </td>
+              <td><strong style="color:${actionColor}">${log.quantity}</strong></td>
+              <td><div style="font-size:0.85rem; color:var(--text-muted); max-width:200px; white-space:normal;">${log.notes || '-'}</div></td>
+            `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        document.getElementById('global-logs-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--error)">خطأ: ${e.message}</td></tr>`;
+      }
+    }
+
+    async function initInventoryPage() {
+      await initAuth();
+
+      const sb = getSupabase();
+      const tbody = document.getElementById('inventory-table-body');
+
+      try {
+        const { data, error } = await sb.from('inventory').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+
+        inventoryData = data || [];
+
+        if (inventoryData.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا يوجد أصناف في المخازن حالياً</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = '';
+        inventoryData.forEach(item => {
+          const total = (item.wh_1_qty || 0) + (item.wh_2_qty || 0) + (item.wh_3_qty || 0);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+              <td><strong>${item.item_name}</strong></td>
+              <td>${item.wh_1_qty || 0}</td>
+              <td>${item.wh_2_qty || 0}</td>
+              <td>${item.wh_3_qty || 0}</td>
+              <td><strong style="color:var(--primary)">${total}</strong></td>
+              <td>
+                <div style="display:flex;gap:0.4rem;align-items:center;justify-content:center;flex-wrap:wrap;">
+                  <button onclick="openEditBalances('${item.id}')" title="تعديل الأرصدة"
+                    style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    تعديل
+                  </button>
+                  <button onclick="deleteInventoryItem('${item.id}')" title="حذف الصنف"
+                    style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    حذف
+                  </button>
+                </div>
+              </td>
+            `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--error)">تأكد من إنشاء جدول inventory في قاعدة البيانات: ${e.message}</td></tr>`;
+      }
+
+      await fetchGlobalLogs();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initInventoryPage();
+
+      const sb = getSupabase();
+      sb.channel('inventory-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
+          initInventoryPage();
+        })
+        .subscribe();
+
+      setInterval(initInventoryPage, 5000);
+    });
+  </script>
+</body>
+
+</html>
+

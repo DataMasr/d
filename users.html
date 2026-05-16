@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>المستخدمين - نظام الإدارة</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+
+<body>
+  <main class="main-content">
+    <div class="page-header">
+      <h1 style="display:flex; align-items:center; gap:0.6rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;flex-shrink:0;"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 3.13a4 4 0 010 7.75" opacity="0.3"/></svg>
+        إدارة المستخدمين
+      </h1>
+      <button class="btn btn-primary" onclick="openModal('create-user-modal')" style="gap:0.5rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M12 5v14M5 12h14"/></svg>
+        حساب جديد
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>قائمة المستخدمين</h2>
+      </div>
+      <div class="card-body">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>الاسم / البريد</th>
+                <th>الدور</th>
+                <th>تاريخ الإنشاء</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <tr>
+                <td colspan="4" style="text-align:center;color:var(--text-muted)">جاري التحميل...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="create-user-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>حساب جديد</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('create-user-modal')" style="padding:0.5rem">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="create-user-form">
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="new-user-name">الاسم الكامل *</label>
+              <input type="text" id="new-user-name" required placeholder="مثال: أحمد محمد">
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="new-user-email">البريد الإلكتروني *</label>
+              <input type="email" id="new-user-email" required placeholder="example@email.com">
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="new-user-password">كلمة المرور *</label>
+              <input type="password" id="new-user-password" required minlength="6" placeholder="على الأقل 6 أحرف">
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label for="new-user-role">الصلاحية (الرتبة) *</label>
+              <select id="new-user-role" required>
+                <option value="manager">مدير (Manager)</option>
+                <option value="admin">مدير نظام (Admin)</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="submitCreateUser()">إنشاء الحساب</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('create-user-modal')">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+      }
+
+      function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+      }
+
+      async function submitCreateUser() {
+        const form = document.getElementById('create-user-form');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const name = document.getElementById('new-user-name').value;
+        const email = document.getElementById('new-user-email').value;
+        const password = document.getElementById('new-user-password').value;
+        const role = document.getElementById('new-user-role').value;
+
+        try {
+          showAlert('جاري إنشاء الحساب...', 'pending');
+
+          const tempSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false }
+          });
+
+          const { data, error } = await tempSupabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { full_name: name, role: role }
+            }
+          });
+
+          if (error) throw error;
+
+          if (data.user) {
+            const sb = getSupabase();
+            await sb.from('profiles').update({ role, full_name: name }).eq('id', data.user.id);
+          }
+
+          showAlert('تم إنشاء الحساب بنجاح!', 'success');
+          closeModal('create-user-modal');
+          form.reset();
+          await initUsersPage(); // Refresh table
+        } catch (e) {
+          showAlert('فشل إنشاء الحساب: ' + e.message, 'error');
+        }
+      }
+      async function initUsersPage() {
+        await initAuth();
+
+        const profiles = await getProfiles();
+        const tbody = document.getElementById('users-table-body');
+
+        if (profiles.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا يوجد مستخدمين</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = '';
+        profiles.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+          <td>
+            <div style="font-weight:600">${p.full_name || '-'}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">${p.email}</div>
+          </td>
+          <td>
+            <select onchange="changeRole('${p.id}', this.value)" style="padding:0.5rem;border:2px solid var(--border);border-radius:0.5rem;font-family:inherit">
+              <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>مدير النظام</option>
+              <option value="manager" ${p.role === 'manager' ? 'selected' : ''}>مدير</option>
+            </select>
+          </td>
+          <td>${new Date(p.created_at).toLocaleDateString('ar-EG')}</td>
+          <td>
+            <div style="display:flex;gap:0.5rem;align-items:center;justify-content:center;flex-wrap:wrap;">
+              <span class="badge badge-${p.role === 'admin' ? 'completed' : p.role === 'manager' ? 'in_progress' : 'pending'}">
+                ${getRoleLabel(p.role)}
+              </span>
+              <button onclick="deleteUserAccount('${p.id}')" title="حذف نهائي"
+                style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                حذف
+              </button>
+            </div>
+          </td>
+        `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      async function changeRole(userId, newRole) {
+        try {
+          await updateUserRole(userId, newRole);
+          showAlert('تم تحديث الدور بنجاح', 'success');
+        } catch (e) {
+          showAlert('فشل التحديث: ' + e.message, 'error');
+        }
+      }
+
+      async function deleteUserAccount(userId) {
+        if (!(await customConfirm('هل أنت متأكد من حذف هذا الحساب وتجريده من الصلاحيات نهائياً؟'))) return;
+        try {
+          const sb = getSupabase();
+          const { error } = await sb.from('profiles').delete().eq('id', userId);
+          if (error) throw error;
+          showAlert('تم حذف الحساب بنجاح', 'success');
+          await initUsersPage();
+        } catch (e) {
+          showAlert('فشل حذف الحساب: ' + e.message, 'error');
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', initUsersPage);
+    </script>
+</body>
+
+</html>
