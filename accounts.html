@@ -325,6 +325,34 @@
         }
       }
 
+      async function markAsPaid(id, type, totalAmount) {
+        if (!(await customConfirm('هل أنت متأكد من سداد المبلغ بالكامل لهذا الحساب؟'))) return;
+        try {
+          showAlert('جاري التحديث...', 'pending');
+          const sb = getSupabase();
+          let error;
+
+          if (type === 'receivable') {
+            const res = await sb.from('client_orders').update({
+              paid_amount: totalAmount
+            }).eq('id', id);
+            error = res.error;
+          } else {
+            const res = await sb.from('accounts').update({
+              paid_amount: totalAmount
+            }).eq('id', id);
+            error = res.error;
+          }
+
+          if (error) throw error;
+
+          showAlert('تم السداد بالكامل بنجاح!', 'success');
+          await initAccountsPage();
+        } catch (e) {
+          showAlert('فشل التحديث: ' + e.message, 'error');
+        }
+      }
+
       async function initAccountsPage() {
         await initAuth();
         const sb = getSupabase();
@@ -374,11 +402,20 @@
               </td>
               <td style="direction:ltr; text-align:right;">${dateStr}<br><span style="font-size:0.7rem;color:var(--text-muted)">${order.payment_plan || ''}</span></td>
               <td style="text-align:center;">
-                <button onclick="openUpdatePaymentModal('${order.id}', 'receivable', ${order.paid_amount || 0}, '${order.delivery_date || ''}')"
-                  style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.85rem;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.35rem;">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  تحديث
-                </button>
+                <div style="display:flex;gap:0.4rem;justify-content:center;flex-wrap:wrap;">
+                  <button onclick="openUpdatePaymentModal('${order.id}', 'receivable', ${order.paid_amount || 0}, '${order.delivery_date || ''}')"
+                    style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.85rem;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.35rem;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    تحديث
+                  </button>
+                  ${!isFullyPaid ? `
+                  <button onclick="markAsPaid('${order.id}', 'receivable', ${order.total_price})"
+                    style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:0.4rem 0.85rem;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.35rem;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    تم السداد
+                  </button>
+                  ` : ''}
+                </div>
               </td>
             `;
             recBody.appendChild(tr);
@@ -413,6 +450,13 @@
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     تحديث
                   </button>
+                  ${!isFullyPaid ? `
+                  <button onclick="markAsPaid('${acc.id}', 'payable', ${acc.total_amount})"
+                    style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    تم السداد
+                  </button>
+                  ` : ''}
                   <button onclick="deleteAccount('${acc.id}')"
                     style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
@@ -424,6 +468,7 @@
             payBody.appendChild(tr);
             hasPay = true;
           });
+
 
           if (!hasRec) recBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا يوجد حسابات حالياً</td></tr>`;
           if (!hasPay) payBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا يوجد حسابات حالياً</td></tr>`;
@@ -462,4 +507,3 @@
 </body>
 
 </html>
-

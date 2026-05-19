@@ -35,8 +35,17 @@
     </div>
 
     <div class="card">
-      <div class="card-header">
+      <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
         <h2>أرصدة الأصناف في المخازن</h2>
+        <div style="position:relative; min-width:300px;">
+          <input type="text" id="inventory-search" placeholder="🔍 ابحث عن صنف..." 
+            style="width:100%; padding:0.5rem 2.5rem 0.5rem 1rem; border-radius:8px; border:1.5px solid var(--border); font-size:0.9rem;"
+            oninput="filterInventory()">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" stroke-width="2.5"
+            style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-light); pointer-events:none;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
       </div>
       <div class="card-body">
         <div class="table-container">
@@ -387,6 +396,50 @@
       }
     }
 
+    function filterInventory() {
+      const query = document.getElementById('inventory-search').value.trim().toLowerCase();
+      const filtered = inventoryData.filter(item => 
+        item.item_name.toLowerCase().includes(query)
+      );
+      renderInventoryTable(filtered);
+    }
+
+    function renderInventoryTable(data) {
+      const tbody = document.getElementById('inventory-table-body');
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted); padding:2rem;">لا توجد نتائج تطابق البحث</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      data.forEach(item => {
+        const total = (item.wh_1_qty || 0) + (item.wh_2_qty || 0) + (item.wh_3_qty || 0);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${item.item_name}</strong></td>
+            <td>${item.wh_1_qty || 0}</td>
+            <td>${item.wh_2_qty || 0}</td>
+            <td>${item.wh_3_qty || 0}</td>
+            <td><strong style="color:var(--primary)">${total}</strong></td>
+            <td>
+              <div style="display:flex;gap:0.4rem;align-items:center;justify-content:center;flex-wrap:wrap;">
+                <button onclick="openEditBalances('${item.id}')" title="تعديل الأرصدة"
+                  style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  تعديل
+                </button>
+                <button onclick="deleteInventoryItem('${item.id}')" title="حذف الصنف"
+                  style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  حذف
+                </button>
+              </div>
+            </td>
+          `;
+        tbody.appendChild(tr);
+      });
+    }
+
     async function initInventoryPage() {
       await initAuth();
 
@@ -404,33 +457,7 @@
           return;
         }
 
-        tbody.innerHTML = '';
-        inventoryData.forEach(item => {
-          const total = (item.wh_1_qty || 0) + (item.wh_2_qty || 0) + (item.wh_3_qty || 0);
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-              <td><strong>${item.item_name}</strong></td>
-              <td>${item.wh_1_qty || 0}</td>
-              <td>${item.wh_2_qty || 0}</td>
-              <td>${item.wh_3_qty || 0}</td>
-              <td><strong style="color:var(--primary)">${total}</strong></td>
-              <td>
-                <div style="display:flex;gap:0.4rem;align-items:center;justify-content:center;flex-wrap:wrap;">
-                  <button onclick="openEditBalances('${item.id}')" title="تعديل الأرصدة"
-                    style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    تعديل
-                  </button>
-                  <button onclick="deleteInventoryItem('${item.id}')" title="حذف الصنف"
-                    style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                    حذف
-                  </button>
-                </div>
-              </td>
-            `;
-          tbody.appendChild(tr);
-        });
+        filterInventory();
       } catch (e) {
         console.error(e);
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--error)">تأكد من إنشاء جدول inventory في قاعدة البيانات: ${e.message}</td></tr>`;

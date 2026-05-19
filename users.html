@@ -16,11 +16,19 @@
   <main class="main-content">
     <div class="page-header">
       <h1 style="display:flex; align-items:center; gap:0.6rem;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;flex-shrink:0;"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 3.13a4 4 0 010 7.75" opacity="0.3"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" style="width:28px;height:28px;flex-shrink:0;">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+          <path d="M16 3.13a4 4 0 010 7.75" opacity="0.3" />
+        </svg>
         إدارة المستخدمين
       </h1>
       <button class="btn btn-primary" onclick="openModal('create-user-modal')" style="gap:0.5rem;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M12 5v14M5 12h14"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+          stroke-linejoin="round" style="width:18px;height:18px;">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
         حساب جديد
       </button>
     </div>
@@ -74,11 +82,14 @@
               <label for="new-user-password">كلمة المرور *</label>
               <input type="password" id="new-user-password" required minlength="6" placeholder="على الأقل 6 أحرف">
             </div>
+
             <div class="form-group" style="margin-bottom: 1.5rem;">
-              <label for="new-user-role">الصلاحية (الرتبة) *</label>
-              <select id="new-user-role" required>
-                <option value="manager">مدير (Manager)</option>
-                <option value="admin">مدير نظام (Admin)</option>
+              <label for="new-user-role" style="display:block; margin-bottom:0.8rem; font-weight:800; color:var(--primary);">الرتبة :</label>
+              <select id="new-user-role" required style="width:100%; padding:0.8rem; border-radius:var(--radius); border:1px solid var(--border);">
+                <option value="purchasing_manager">مدير مشتريات</option>
+                <option value="inventory_manager">مدير التجهيزات</option>
+                <option value="production_engineer">مهندس إنتاج</option>
+                <option value="manager">مدير عام</option>
               </select>
             </div>
           </form>
@@ -90,13 +101,81 @@
       </div>
     </div>
 
+    <div id="edit-permissions-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="edit-perms-title">تعديل رتبة المستخدم</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('edit-permissions-modal')"
+            style="padding:0.5rem">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-perms-form">
+            <input type="hidden" id="edit-user-id">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label for="edit-user-role" style="display:block; margin-bottom:0.8rem; font-weight:800; color:var(--primary);">الرتبة :</label>
+              <select id="edit-user-role" required style="width:100%; padding:0.8rem; border-radius:var(--radius); border:1px solid var(--border);">
+                <option value="purchasing_manager">مدير مشتريات</option>
+                <option value="inventory_manager">مدير التجهيزات</option>
+                <option value="production_engineer">مهندس إنتاج</option>
+                <option value="manager">مدير عام</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="submitUpdatePermissions()">حفظ التعديلات</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('edit-permissions-modal')">إلغاء</button>
+        </div>
+      </div>
+    </div>
+
     <script>
+      const SECTIONS = [
+        { id: 'orders', name: 'طلبيات العملاء', page: 'client_orders.html' },
+        { id: 'inventory', name: 'المخازن', page: 'inventory.html' },
+        { id: 'customers', name: 'العملاء', page: 'customers.html' },
+        { id: 'pricing', name: 'التسعير', page: 'pricing.html' },
+        { id: 'accounts', name: 'الحسابات', page: 'accounts.html' },
+        { id: 'profits', name: 'الأرباح', page: 'profits.html' },
+        { id: 'purchasing', name: 'المشتريات', page: 'purchasing.html' },
+        { id: 'users', name: 'المستخدمين', page: 'users.html' }
+      ];
+
       function openModal(id) {
         document.getElementById(id).classList.remove('hidden');
       }
 
       function closeModal(id) {
         document.getElementById(id).classList.add('hidden');
+      }
+
+      async function openEditPermissionsModal(userId, fullName, currentRole) {
+        document.getElementById('edit-user-id').value = userId;
+        document.getElementById('edit-perms-title').textContent = `تعديل رتبة: ${fullName}`;
+        document.getElementById('edit-user-role').value = currentRole;
+        openModal('edit-permissions-modal');
+      }
+
+      async function submitUpdatePermissions() {
+        const userId = document.getElementById('edit-user-id').value;
+        const role = document.getElementById('edit-user-role').value;
+
+        try {
+          showAlert('جاري تحديث الرتبة...', 'pending');
+          const sb = getSupabase();
+          const { error } = await sb.from('profiles').update({ role }).eq('id', userId);
+          if (error) throw error;
+
+          showAlert('تم تحديث الرتبة بنجاح!', 'success');
+          closeModal('edit-permissions-modal');
+          await initUsersPage();
+        } catch (e) {
+          showAlert('فشل التحديث: ' + e.message, 'error');
+        }
       }
 
       async function submitCreateUser() {
@@ -110,37 +189,37 @@
 
         try {
           showAlert('جاري إنشاء الحساب...', 'pending');
-
           const tempSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: { persistSession: false, autoRefreshToken: false }
           });
 
           const { data, error } = await tempSupabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: { full_name: name, role: role }
-            }
+            email, password,
+            options: { data: { full_name: name, role: role } }
           });
 
           if (error) throw error;
 
           if (data.user) {
+            await new Promise(r => setTimeout(r, 1000));
             const sb = getSupabase();
-            await sb.from('profiles').update({ role, full_name: name }).eq('id', data.user.id);
+            const { error: updateError } = await sb.from('profiles').update({
+              role, full_name: name, permissions: {}
+            }).eq('id', data.user.id);
+            if (updateError) throw updateError;
           }
 
           showAlert('تم إنشاء الحساب بنجاح!', 'success');
           closeModal('create-user-modal');
           form.reset();
-          await initUsersPage(); // Refresh table
+          await initUsersPage();
         } catch (e) {
           showAlert('فشل إنشاء الحساب: ' + e.message, 'error');
         }
       }
+
       async function initUsersPage() {
         await initAuth();
-
         const profiles = await getProfiles();
         const tbody = document.getElementById('users-table-body');
 
@@ -153,45 +232,34 @@
         profiles.forEach(p => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-          <td>
-            <div style="font-weight:600">${p.full_name || '-'}</div>
-            <div style="font-size:0.75rem;color:var(--text-muted)">${p.email}</div>
-          </td>
-          <td>
-            <select onchange="changeRole('${p.id}', this.value)" style="padding:0.5rem;border:2px solid var(--border);border-radius:0.5rem;font-family:inherit">
-              <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>مدير النظام</option>
-              <option value="manager" ${p.role === 'manager' ? 'selected' : ''}>مدير</option>
-            </select>
-          </td>
-          <td>${new Date(p.created_at).toLocaleDateString('ar-EG')}</td>
-          <td>
-            <div style="display:flex;gap:0.5rem;align-items:center;justify-content:center;flex-wrap:wrap;">
-              <span class="badge badge-${p.role === 'admin' ? 'completed' : p.role === 'manager' ? 'in_progress' : 'pending'}">
+            <td>
+              <div style="font-weight:600">${p.full_name || '-'}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">${p.email}</div>
+            </td>
+            <td>
+              <span class="badge badge-${p.role === 'admin' ? 'completed' : 'in_progress'}">
                 ${getRoleLabel(p.role)}
               </span>
-              <button onclick="deleteUserAccount('${p.id}')" title="حذف نهائي"
-                style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:0.4rem 0.75rem;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                حذف
-              </button>
-            </div>
-          </td>
-        `;
+            </td>
+            <td>${new Date(p.created_at).toLocaleDateString('ar-EG')}</td>
+            <td>
+              <div style="display:flex; gap:0.5rem; justify-content:center;">
+                <button onclick="openEditPermissionsModal('${p.id}', '${p.full_name || p.email}', '${p.role}')" 
+                  class="btn btn-secondary btn-sm" style="background:var(--primary); color:white; border:none;">
+                  تعديل الرتبة
+                </button>
+                <button onclick="deleteUserAccount('${p.id}')" class="btn btn-sm" style="background:#fee2e2; color:#dc2626; border:none;">
+                  حذف
+                </button>
+              </div>
+            </td>
+          `;
           tbody.appendChild(tr);
         });
       }
 
-      async function changeRole(userId, newRole) {
-        try {
-          await updateUserRole(userId, newRole);
-          showAlert('تم تحديث الدور بنجاح', 'success');
-        } catch (e) {
-          showAlert('فشل التحديث: ' + e.message, 'error');
-        }
-      }
-
       async function deleteUserAccount(userId) {
-        if (!(await customConfirm('هل أنت متأكد من حذف هذا الحساب وتجريده من الصلاحيات نهائياً؟'))) return;
+        if (!(await customConfirm('هل أنت متأكد من حذف هذا الحساب؟'))) return;
         try {
           const sb = getSupabase();
           const { error } = await sb.from('profiles').delete().eq('id', userId);
@@ -199,7 +267,7 @@
           showAlert('تم حذف الحساب بنجاح', 'success');
           await initUsersPage();
         } catch (e) {
-          showAlert('فشل حذف الحساب: ' + e.message, 'error');
+          showAlert('فشل الحذف: ' + e.message, 'error');
         }
       }
 

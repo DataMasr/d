@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قائمة المهام والخطوات - نظام الإدارة</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/auth.js"></script>
+  <style>
+    .tasks-container {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+      margin-top: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .tasks-container {
+        grid-template-columns: 1fr;
+      }
+      .orders-panel {
+        position: static !important;
+      }
+      .orders-list {
+        max-height: 240px;
+      }
+      .stats-bar {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .tasks-container {
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+      .orders-panel,
+      .details-panel {
+        padding: 1rem;
+      }
+      .stats-bar {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.5rem;
+      }
+      .stat-card {
+        padding: 0.6rem 0.5rem;
+      }
+      .stat-card .stat-value {
+        font-size: 1.2rem;
+      }
+      .add-step-form {
+        grid-template-columns: 1fr;
+      }
+      .add-step-form .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .checklist-row {
+        padding: 0.7rem 0.75rem;
+      }
+    }
+
+    /* ── Panels ── */
+    .orders-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 1.5rem;
+    }
+
+    .details-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-sm);
+      min-height: 60vh;
+    }
+
+    /* ── Search Input ── */
+    .orders-search {
+      width: 100%;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-color);
+      font-family: inherit;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      margin-top: 0.85rem;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .orders-search:focus { border-color: var(--primary-light); }
+
+    /* ── Scrollable orders list ── */
+    .orders-list {
+      max-height: calc(100vh - 320px);
+      overflow-y: auto;
+      margin-top: 0.85rem;
+      padding-right: 2px;
+    }
+    .orders-list::-webkit-scrollbar { width: 4px; }
+    .orders-list::-webkit-scrollbar-thumb { background: #dde1e9; border-radius: 8px; }
+
+    /* ── Order card in left list ── */
+    .task-order-item {
+      background: var(--bg-color);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.6rem;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .task-order-item::before {
+      content: '';
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: transparent;
+      border-radius: 0 3px 3px 0;
+      transition: background 0.2s;
+    }
+    .task-order-item:hover { box-shadow: var(--shadow-md); border-color: #c7d2fe; transform: translateY(-1px); }
+    .task-order-item:hover::before { background: var(--primary-light); }
+    .task-order-item.active { background: var(--primary-bg); border-color: rgba(79,70,229,0.2); }
+    .task-order-item.active::before { background: var(--primary); }
+
+    /* ── Progress Track ── */
+    .order-progress-track {
+      width: 100%;
+      height: 5px;
+      background: #e8ecf2;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .order-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), #818cf8);
+      border-radius: 10px;
+      transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Badges ── */
+    .badge-stage {
+      padding: 0.2rem 0.6rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .stage-contract  { background: rgba(5,150,105,0.08);  color: #047857; border: 1px solid rgba(5,150,105,0.15); }
+    .stage-production{ background: rgba(124,58,237,0.08); color: #6d28d9; border: 1px solid rgba(124,58,237,0.15); }
+    .stage-delivery  { background: rgba(217,119,6,0.08);  color: #b45309; border: 1px solid rgba(217,119,6,0.15); }
+    .stage-default   { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--bg-color);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      text-align: center;
+    }
+    .stat-card .stat-value {
+      font-size: 1.6rem;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+    .stat-card .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-light);
+      font-weight: 600;
+      margin-top: 0.2rem;
+    }
+
+    /* ── Progress bar in detail panel ── */
+    .detail-progress-wrap {
+      background: var(--bg-color);
+      border: 1px solid var(--border);
+      padding: 0.9rem 1.15rem;
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+    }
+    .detail-progress-track {
+      height: 10px;
+      background: #e8ecf2;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 0.4rem;
+    }
+    .detail-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), #818cf8);
+      border-radius: 10px;
+      transition: width 0.45s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Checklist rows ── */
+    .checklist-row {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.8rem 1rem;
+      background: var(--bg-color);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 0.6rem;
+      transition: var(--transition);
+    }
+    .checklist-row:hover { border-color: #c7d2fe; background: #f5f3ff; }
+    .checklist-row.completed { background: rgba(5,150,105,0.03); border-color: rgba(5,150,105,0.15); }
+
+    .checklist-content {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex: 1;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checklist-text {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-main);
+      transition: var(--transition);
+      line-height: 1.4;
+    }
+    .checklist-row.completed .checklist-text {
+      text-decoration: line-through;
+      color: var(--text-light);
+    }
+
+    /* ── Custom Checkbox ── */
+    .custom-checkbox {
+      width: 22px;
+      height: 22px;
+      border: 2px solid #c7d2fe;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .checklist-row.completed .custom-checkbox {
+      background: var(--success);
+      border-color: var(--success);
+    }
+    .custom-checkbox svg {
+      width: 12px; height: 12px;
+      fill: none; stroke: #fff;
+      stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .checklist-row.completed .custom-checkbox svg { opacity: 1; }
+
+    /* ── Delete btn ── */
+    .btn-delete-task {
+      background: transparent;
+      border: none;
+      color: #cbd5e1;
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: 6px;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .btn-delete-task:hover { background: #fee2e2; color: #ef4444; }
+
+    /* ── Add step form ── */
+    .add-step-form {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem;
+      background: var(--bg-color);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      margin-top: 0.5rem;
+      transition: border-color 0.2s;
+    }
+    .add-step-form:focus-within { border-color: var(--primary-light); border-style: solid; }
+    .add-step-input {
+      padding: 0.7rem 1rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      font-family: inherit;
+      font-size: 0.88rem;
+      background: #fff;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .add-step-input:focus { border-color: var(--primary-light); }
+
+    /* ── Empty state ── */
+    .empty-tasks {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      background: var(--bg-color);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-lg);
+      color: var(--text-light);
+    }
+    .empty-tasks svg { opacity: 0.3; margin: 0 auto 1rem; display: block; }
+
+    /* ── Panel section header ── */
+    .panel-section-title {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="main-content">
+
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;flex-shrink:0;">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        <div>
+          <h1 style="font-size:1.4rem;margin:0;">خطوات تنفيذ الطلبات</h1>
+          <p style="font-size:0.82rem;color:var(--text-muted);margin-top:0.1rem;">تابع وشطب خطوات التنفيذ لكل طلب وتابع نسبة الإنجاز</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tasks-container">
+
+      <!-- ── Right Panel: Orders List ── -->
+      <div class="orders-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.9rem;font-weight:800;color:var(--text-main);">الطلبيات النشطة</span>
+          <span id="orders-badge" class="badge-stage stage-contract">0 طلبية</span>
+        </div>
+        <input class="orders-search" type="text" id="search-orders" placeholder="🔍 ابحث باسم العميل..." oninput="filterOrdersList()">
+        <div class="orders-list" id="orders-list-container">
+          <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-light);font-size:0.85rem;">جاري التحميل...</div>
+        </div>
+      </div>
+
+      <!-- ── Left Panel: Task Details ── -->
+      <div class="details-panel" id="task-details-panel">
+
+        <!-- Empty placeholder -->
+        <div id="select-order-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;text-align:center;color:var(--text-light);">
+          <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;margin-bottom:1.25rem;">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-muted);margin-bottom:0.35rem;">اختر طلبية للبدء</h3>
+          <p style="font-size:0.83rem;">اضغط على أي طلبية من القائمة لعرض خطواتها وإضافة مهام تنفيذية</p>
+        </div>
+
+        <!-- Selected order view -->
+        <div id="selected-order-view" class="hidden">
+
+          <!-- Order header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;padding-bottom:1.25rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);">
+            <div>
+              <h2 id="view-client-name" style="font-size:1.35rem;color:var(--primary);font-weight:800;margin-bottom:0.35rem;">-</h2>
+              <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                <span id="view-order-stage-container"></span>
+                <span style="font-size:0.78rem;color:var(--text-muted);">
+                  📅 تسليم: <strong id="view-delivery-date" style="color:var(--text-main);">-</strong>
+                </span>
+              </div>
+            </div>
+            <div style="text-align:center;min-width:90px;">
+              <div style="font-size:2rem;font-weight:900;color:var(--success);line-height:1;" id="progress-percent-large">0%</div>
+              <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem;" id="progress-count-large">0 من 0</div>
+            </div>
+          </div>
+
+          <!-- Stats cards -->
+          <div class="stats-bar">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-total" style="color:var(--text-main);">0</div>
+              <div class="stat-label">إجمالي الخطوات</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-done" style="color:var(--success);">0</div>
+              <div class="stat-label">مكتمل</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-remaining" style="color:var(--warning);">0</div>
+              <div class="stat-label">متبقي</div>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="detail-progress-wrap">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:700;color:var(--text-muted);">
+              <span>تقدم التنفيذ</span>
+              <span id="progress-label-small">0/0</span>
+            </div>
+            <div class="detail-progress-track">
+              <div class="detail-progress-bar" id="view-progress-bar" style="width:0%;"></div>
+            </div>
+          </div>
+
+          <!-- Checklist -->
+          <div>
+            <div class="panel-section-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+              خطوات التنفيذ
+              <span id="checklist-count-badge" class="badge-stage stage-production" style="font-size:0.65rem;padding:2px 7px;margin-right:auto;">0 خطوة</span>
+            </div>
+
+            <div id="checklist-items-list" style="margin-bottom:1rem;"></div>
+
+            <!-- Add step form -->
+            <form class="add-step-form" onsubmit="addNewTaskStep(event)">
+              <input class="add-step-input" type="text" id="new-task-text" placeholder="اكتب خطوة جديدة هنا..." required>
+              <button type="submit" class="btn btn-primary" style="gap:0.35rem;padding:0 1.25rem;white-space:nowrap;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                إضافة
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let activeOrders = [];
+    let selectedOrder = null;
+    let searchFilter = "";
+
+    // Parse tasks from database order (pending_materials column)
+    function parseTasks(orderId) {
+      if (!orderId) return [];
+      const order = activeOrders.find(o => o.id === orderId);
+      return order && order.pending_materials ? order.pending_materials : [];
+    }
+
+    // Save tasks to Database
+    async function saveTasks(orderId, tasks) {
+      try {
+        const sb = getSupabase();
+        const { error } = await sb
+          .from('client_orders')
+          .update({ pending_materials: tasks })
+          .eq('id', orderId);
+
+        if (error) throw error;
+        
+        const order = activeOrders.find(o => o.id === orderId);
+        if (order) {
+          order.pending_materials = tasks;
+        }
+      } catch (err) {
+        console.error("Error saving tasks to database:", err);
+        showAlert("فشل حفظ الخطوة في قاعدة البيانات: " + err.message, "error");
+      }
+    }
+
+    // Render Stage Badge utility
+    function getStageBadgeHTML(stage) {
+      if (!stage) return `<span class="badge-stage stage-default">مجهول</span>`;
+      let className = 'stage-default';
+      if (stage.includes('عربون') || stage.includes('تعاقد')) className = 'stage-contract';
+      else if (stage.includes('تنفيذ') || stage.includes('خامات')) className = 'stage-production';
+      else if (stage.includes('شحن') || stage.includes('توصيل') || stage.includes('تسليم')) className = 'stage-delivery';
+      return `<span class="badge-stage ${className}">${stage}</span>`;
+    }
+
+    // Filter active orders based on input
+    function filterOrdersList() {
+      searchFilter = document.getElementById('search-orders').value.trim().toLowerCase();
+      renderOrdersList();
+    }
+
+    // Load active client orders
+    async function loadActiveOrders() {
+      const sb = getSupabase();
+      try {
+        const { data, error } = await sb
+          .from('client_orders')
+          .select('*')
+          .eq('archived', false)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        activeOrders = data || [];
+
+        // Update selected order details reference if it is active
+        if (selectedOrder) {
+          const freshSelected = activeOrders.find(o => o.id === selectedOrder.id);
+          if (freshSelected) {
+            selectedOrder = freshSelected;
+          }
+        }
+
+        renderOrdersList();
+        if (selectedOrder) {
+          renderSelectedOrderView();
+        }
+      } catch (err) {
+        console.error("Error loading active orders:", err);
+        showAlert("فشل تحميل الطلبيات النشطة: " + err.message, "error");
+      }
+    }
+
+    // Render active orders list in right panel
+    function renderOrdersList() {
+      const container = document.getElementById('orders-list-container');
+      const badge = document.getElementById('orders-badge');
+
+      const filtered = activeOrders.filter(o =>
+        !searchFilter || o.client_name.toLowerCase().includes(searchFilter)
+      );
+
+      badge.textContent = `${filtered.length} طلبية`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:3rem 1rem; color:var(--text-light); font-size:0.85rem;">
+            لا توجد طلبيات مطابقة للبحث.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = '';
+      filtered.forEach(order => {
+        const tasks = parseTasks(order.id);
+        const total = tasks.length;
+        const completed = tasks.filter(t => t.done).length;
+        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = `task-order-item ${selectedOrder && selectedOrder.id === order.id ? 'active' : ''}`;
+        itemDiv.onclick = () => selectOrder(order);
+
+        itemDiv.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="color:var(--text-main); font-size:0.95rem; font-weight:800;">${order.client_name}</strong>
+            ${getStageBadgeHTML(order.stage)}
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">
+            <span>تسليم: <strong>${order.delivery_date || 'غير محدد'}</strong></span>
+            <span><strong>${completed}/${total}</strong> خطوات (${pct}%)</span>
+          </div>
+          <div class="order-progress-track">
+            <div class="order-progress-bar" style="width: ${pct}%;"></div>
+          </div>
+        `;
+        container.appendChild(itemDiv);
+      });
+    }
+
+    // Select specific order to show details
+    function selectOrder(order) {
+      selectedOrder = order;
+      document.getElementById('select-order-placeholder').classList.add('hidden');
+      document.getElementById('selected-order-view').classList.remove('hidden');
+
+      // Update sidebar list items active status
+      renderOrdersList();
+      renderSelectedOrderView();
+    }
+
+    // Render left panel view for selected order
+    function renderSelectedOrderView() {
+      if (!selectedOrder) return;
+
+      document.getElementById('view-client-name').textContent = selectedOrder.client_name;
+      document.getElementById('view-order-stage-container').innerHTML = getStageBadgeHTML(selectedOrder.stage);
+
+      document.getElementById('view-delivery-date').textContent = selectedOrder.delivery_date || 'غير محدد';
+
+      const tasks = parseTasks(selectedOrder.id);
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.done).length;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      // Update progress stats
+      document.getElementById('progress-percent-large').textContent = `${pct}%`;
+      document.getElementById('progress-count-large').textContent = `${completed} من ${total}`;
+      document.getElementById('progress-label-small').textContent = `${completed}/${total}`;
+      document.getElementById('view-progress-bar').style.width = `${pct}%`;
+      document.getElementById('checklist-count-badge').textContent = `${total} خطوة`;
+
+      // Stat cards
+      const statTotal = document.getElementById('stat-total');
+      const statDone = document.getElementById('stat-done');
+      const statRemaining = document.getElementById('stat-remaining');
+      if (statTotal) statTotal.textContent = total;
+      if (statDone) statDone.textContent = completed;
+      if (statRemaining) statRemaining.textContent = total - completed;
+
+      // Render Checklist rows
+      const listContainer = document.getElementById('checklist-items-list');
+      if (total === 0) {
+        listContainer.innerHTML = `
+          <div class="empty-tasks">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 11 12 14 22 4"/>
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+            <div style="font-weight:700;color:var(--text-muted);margin-bottom:0.25rem;">لا توجد خطوات بعد</div>
+            <div style="font-size:0.8rem;">أضف أول خطوة من النموذج في الأسفل 👇</div>
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = '';
+      tasks.forEach((task, idx) => {
+        const row = document.createElement('div');
+        row.className = `checklist-row ${task.done ? 'completed' : ''}`;
+
+        row.innerHTML = `
+          <div class="checklist-content" onclick="toggleTaskStep(${idx})">
+            <div class="custom-checkbox">
+              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <span class="checklist-text">${task.text}</span>
+          </div>
+          <button class="btn-delete-task" onclick="deleteTaskStep(${idx})" title="حذف الخطوة">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        `;
+        listContainer.appendChild(row);
+      });
+    }
+
+    // Toggle step completion checkbox status
+    async function toggleTaskStep(index) {
+      if (!selectedOrder) return;
+      const tasks = parseTasks(selectedOrder.id);
+
+      const wasAllDoneBefore = tasks.length > 0 && tasks.every(t => t.done);
+
+      tasks[index].done = !tasks[index].done;
+
+      const isAllDoneNow = tasks.length > 0 && tasks.every(t => t.done);
+
+      if (isAllDoneNow && !wasAllDoneBefore) {
+        // All tasks are completed! Automatically move to next stage and clear tasks!
+        const STAGES_SEQUENCE = [
+          "تم التعاقد (دفع عربون)",
+          "شراء الخامات",
+          "قيد التنفيذ",
+          "قيد التصنيع / التجهيز",
+          "جاهز للتسليم",
+          "تم التسليم للزبون"
+        ];
+        const currentStage = selectedOrder.stage || "تم التعاقد (دفع عربون)";
+        const currentIdx = STAGES_SEQUENCE.indexOf(currentStage);
+
+        if (currentIdx !== -1 && currentIdx < STAGES_SEQUENCE.length - 1) {
+          const nextStage = STAGES_SEQUENCE[currentIdx + 1];
+          try {
+            showAlert("جاري انتقال الطلب إلى المرحلة التالية وتصفير المهام...", "pending");
+            const sb = getSupabase();
+            const { error } = await sb
+              .from('client_orders')
+              .update({
+                stage: nextStage,
+                pending_materials: []
+              })
+              .eq('id', selectedOrder.id);
+
+            if (error) throw error;
+
+            showAlert(`🎉 رائع! اكتملت الخطوات وتم نقل الطلبية إلى مرحلة "${nextStage}" بنجاح!`, "success");
+            await loadActiveOrders();
+            return;
+          } catch (e) {
+            console.error("Error updating stage:", e);
+            showAlert("فشل ترقية مرحلة الطلب: " + e.message, "error");
+          }
+        } else {
+          await saveTasks(selectedOrder.id, tasks);
+          renderOrdersList();
+          renderSelectedOrderView();
+          showAlert("تهانينا! اكتملت جميع خطوات تنفيذ الطلب بنجاح! 🎉💪", "success");
+        }
+      } else {
+        await saveTasks(selectedOrder.id, tasks);
+        renderOrdersList();
+        renderSelectedOrderView();
+      }
+    }
+
+    // Add custom task step input
+    async function addNewTaskStep(event) {
+      event.preventDefault();
+      if (!selectedOrder) return;
+
+      const input = document.getElementById('new-task-text');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const tasks = parseTasks(selectedOrder.id);
+      tasks.push({ text: text, done: false });
+
+      await saveTasks(selectedOrder.id, tasks);
+      renderOrdersList();
+      renderSelectedOrderView();
+      input.value = '';
+    }
+
+    // Delete a specific task step
+    async function deleteTaskStep(index) {
+      if (!selectedOrder) return;
+      const tasks = parseTasks(selectedOrder.id);
+      tasks.splice(index, 1);
+
+      await saveTasks(selectedOrder.id, tasks);
+      renderOrdersList();
+      renderSelectedOrderView();
+      showAlert("تم حذف الخطوة بنجاح", "success");
+    }
+
+    // Refresh active orders list silently to support real-time sync
+    async function refreshDataSilently() {
+      const sb = getSupabase();
+      try {
+        const { data } = await sb
+          .from('client_orders')
+          .select('*')
+          .eq('archived', false)
+          .order('created_at', { ascending: false });
+
+        if (data) {
+          activeOrders = data;
+          if (selectedOrder) {
+            const freshSelected = activeOrders.find(o => o.id === selectedOrder.id);
+            if (freshSelected) {
+              selectedOrder = freshSelected;
+            }
+          }
+          renderOrdersList();
+          if (selectedOrder) {
+            renderSelectedOrderView();
+          }
+        }
+      } catch (err) {
+        console.error("Error refreshing data silently:", err);
+      }
+    }
+
+    // Initialize Page
+    async function initTasksPage() {
+      await initAuth();
+      await loadActiveOrders();
+
+      // Setup real-time Supabase subscription
+      const sb = getSupabase();
+      sb.channel('tasks-realtime-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'client_orders' }, () => {
+          refreshDataSilently();
+        })
+        .subscribe();
+    }
+
+    window.onload = initTasksPage;
+  </script>
+</body>
+
+</html>
