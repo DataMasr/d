@@ -36,14 +36,13 @@
               <tr>
                 <th>اسم الصنف</th>
                 <th>وحدة الحساب</th>
-                <th>السعر (جنيه)</th>
                 <th>تاريخ الإضافة</th>
                 <th>إجراءات</th>
               </tr>
             </thead>
             <tbody id="prices-table-body">
               <tr>
-                <td colspan="5" style="text-align:center;color:var(--text-muted)">جاري التحميل...</td>
+                <td colspan="4" style="text-align:center;color:var(--text-muted)">جاري التحميل...</td>
               </tr>
             </tbody>
           </table>
@@ -176,18 +175,12 @@
                 </div>
               </div>
             </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
               <label for="item-unit">وحدة الحساب *</label>
               <select id="item-unit" required>
                 <option value="بالقطعة">بالقطعة (العدد)</option>
-                <option value="بالطن">بالطن</option>
                 <option value="بالمتر">بالمتر</option>
-                <option value="بالكيلو">بالكيلو</option>
               </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-              <label for="piece-price">السعر (جنيه)</label>
-              <input type="number" id="piece-price" step="0.01" min="0" placeholder="مثال: 5">
             </div>
           </form>
         </div>
@@ -216,18 +209,12 @@
               <label for="edit-item-name">اسم الصنف *</label>
               <input type="text" id="edit-item-name" required>
             </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
               <label for="edit-item-unit">وحدة الحساب *</label>
               <select id="edit-item-unit" required>
                 <option value="بالقطعة">بالقطعة (العدد)</option>
-                <option value="بالطن">بالطن</option>
                 <option value="بالمتر">بالمتر</option>
-                <option value="بالكيلو">بالكيلو</option>
               </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-              <label for="edit-piece-price">السعر (جنيه) *</label>
-              <input type="number" id="edit-piece-price" step="0.01" min="0" required>
             </div>
           </form>
         </div>
@@ -304,16 +291,13 @@
           }
         }
 
-        const piecePrice = document.getElementById('piece-price').value;
-
         try {
           showAlert('جاري حفظ الصنف...', 'pending');
           const sb = getSupabase();
           
           const { error } = await sb.from('prices').insert([{
             item_name: itemName,
-            unit: unit,
-            piece_price: piecePrice ? parseFloat(piecePrice) : null
+            unit: unit
           }]);
 
           if (error) throw error;
@@ -336,7 +320,6 @@
         document.getElementById('edit-item-id').value = item.id;
         document.getElementById('edit-item-name').value = item.item_name;
         document.getElementById('edit-item-unit').value = item.unit || 'بالقطعة';
-        document.getElementById('edit-piece-price').value = item.piece_price || 0;
         
         openModal('edit-price-modal');
       }
@@ -348,16 +331,14 @@
         const id = document.getElementById('edit-item-id').value;
         const itemName = document.getElementById('edit-item-name').value;
         const unit = document.getElementById('edit-item-unit').value;
-        const piecePrice = document.getElementById('edit-piece-price').value;
 
         try {
-          showAlert('جاري تحديث السعر...', 'pending');
+          showAlert('جاري تحديث الصنف...', 'pending');
           const sb = getSupabase();
           
           const { error } = await sb.from('prices').update({
             item_name: itemName,
-            unit: unit,
-            piece_price: parseFloat(piecePrice)
+            unit: unit
           }).eq('id', id);
 
           if (error) throw error;
@@ -381,7 +362,7 @@
           if (error) throw error;
 
           if (!prices || prices.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">لا يوجد أصناف حالياً</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا يوجد أصناف حالياً</td></tr>`;
             return;
           }
 
@@ -404,7 +385,6 @@
             tr.innerHTML = `
               <td>${formattedName}</td>
               <td><span class="badge badge-pending">${itemUnit}</span></td>
-              <td><strong style="color:var(--success);">${p.piece_price ? p.piece_price + ' جنيه' : '-'}</strong></td>
               <td>${new Date(p.created_at).toLocaleDateString('ar-EG')}</td>
               <td>
                 <div style="display:flex;gap:0.4rem;justify-content:center;flex-wrap:wrap;">
@@ -425,7 +405,7 @@
           });
         } catch (e) {
           console.error(e);
-          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--error)">تأكد من إنشاء جدول prices في قاعدة البيانات: ${e.message}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--error)">خطأ: ${e.message}</td></tr>`;
         }
       }
 

@@ -346,6 +346,12 @@
                   <option value="تم التسليم للزبون">تم التسليم للزبون</option>
                 </select>
               </div>
+
+              <div class="form-group" style="margin-bottom: 1rem; grid-column: 1 / -1;">
+                <label for="co-display-name">🏷️ اسم الأوردر للعرض العام *</label>
+                <input type="text" id="co-display-name" required placeholder="مثال: أوردر 001 — ستائر زرقاء..." style="font-weight:600;">
+                <small style="color:var(--text-muted);font-size:0.75rem;">هذا الاسم يراه جميع الموظفين بدلاً من اسم العميل</small>
+              </div>
             </div>
 
           </form>
@@ -1007,8 +1013,11 @@
             finalMaterialNotes = `📝 تفاصيل الطلب: ${orderDetails}`;
           }
 
+          const displayName = document.getElementById('co-display-name').value.trim();
+
           const { error: ordError } = await sb.from('client_orders').insert([{
             client_name: clientName,
+            order_display_name: displayName || clientName,
             total_price: totalPrice,
             paid_amount: paidAmount,
             payment_plan: paymentPlan,
@@ -1086,6 +1095,21 @@
           }).eq('id', orderId);
 
           if (error) throw error;
+
+          // Send notification to all staff about manager edit
+          try {
+            const updatedOrder = clientOrdersData.find(o => o.id === orderId);
+            const displayName = updatedOrder ? (updatedOrder.order_display_name || updatedOrder.client_name) : 'أوردر';
+            await sb.from('notifications').insert([{
+              order_id: orderId,
+              order_display_name: displayName,
+              message: `قام المدير بتعديل تفاصيل أوردر: ${displayName} (مرحلة: ${stage})`,
+              created_by: currentUser ? currentUser.id : null,
+              read_by: []
+            }]);
+          } catch (notifErr) {
+            console.warn('Failed to send notification:', notifErr.message);
+          }
 
           showAlert('تم التحديث بنجاح!', 'success');
           closeModal('update-client-order-modal');
@@ -1269,7 +1293,9 @@
         const dateQuery = document.getElementById('search-date').value;
 
         const filtered = clientOrdersData.filter(order => {
-          const matchesName = order.client_name.toLowerCase().includes(nameQuery);
+          const displayName = (order.order_display_name || order.client_name || '').toLowerCase();
+          const clientName  = (order.client_name || '').toLowerCase();
+          const matchesName = displayName.includes(nameQuery) || clientName.includes(nameQuery);
 
           let matchesDate = true;
           if (dateQuery) {
@@ -1294,6 +1320,8 @@
         const role = currentProfile ? currentProfile.role : 'user';
         const isPrepManagerOrAdmin = ['inventory_manager', 'admin'].includes(role);
         const isManagerOrAdmin = ['manager', 'admin'].includes(role);
+        // manager + purchasing_manager see client name in addition to display name
+        const canSeeClientName = ['manager', 'admin', 'purchasing_manager'].includes(role);
 
         if (data.length === 0) {
           tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted); padding:3rem;">لا توجد نتائج تطابق البحث</td></tr>`;
@@ -1335,11 +1363,30 @@
 
           const tr = document.createElement('tr');
           tr.id = 'order-row-' + order.id;
+          
+          // Name cell: show display_name for all; show client_name only for privileged roles
+          const displayName = order.order_display_name || order.client_name;
+          let nameCellHTML;
+          if (canSeeClientName) {
+            // Privileged: show display name in large text, client name below as label
+            nameCellHTML = `
+              <div style="font-weight:800; font-size:1rem; color:var(--primary);">${displayName}</div>
+              <div style="margin-top:0.25rem; display:flex; align-items:center; gap:0.35rem;">
+                <span style="font-size:0.68rem; font-weight:700; background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px;">عميل</span>
+                <span style="font-size:0.8rem; color:var(--text-main); font-weight:700;">${order.client_name}</span>
+              </div>
+              <div style="font-size:0.73rem; color:var(--text-muted); margin-top:0.2rem;">${new Date(order.created_at).toLocaleDateString('ar-EG')}</div>
+            `;
+          } else {
+            // Regular staff: display name only
+            nameCellHTML = `
+              <div style="font-weight:800; font-size:1rem; color:var(--text-main);">${displayName}</div>
+              <div style="font-size:0.73rem; color:var(--text-muted); margin-top:0.2rem;">${new Date(order.created_at).toLocaleDateString('ar-EG')}</div>
+            `;
+          }
+
           tr.innerHTML = `
-            <td>
-              <div style="font-weight:800; font-size:1rem; color:var(--text-main);">${order.client_name}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">${new Date(order.created_at).toLocaleDateString('ar-EG')}</div>
-            </td>
+            <td>${nameCellHTML}</td>
             <td style="min-width:140px;">
               <div style="display:flex; flex-direction:column; gap:0.3rem;">
                 <div style="display:flex; justify-content:space-between; font-size:0.82rem;">

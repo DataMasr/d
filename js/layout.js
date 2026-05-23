@@ -4,19 +4,25 @@ function renderLayout() {
   const sectionMap = [
     { id: 'orders', name: 'طلبيات العملاء', page: 'client_orders.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="3"/><path d="M8 7h8M8 11h5M8 15h3"/><circle cx="17" cy="14" r="3" fill="currentColor" opacity="0.25"/><path d="M16 14l1 1 2-2"/></svg>' },
     { id: 'tasks', name: 'قائمة المهام', page: 'tasks.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>' },
+    { id: 'progress', name: 'متابعة التقدم', page: 'progress.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
     { id: 'inventory', name: 'المخازن', page: 'inventory.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" opacity="0.5"/></svg>' },
     { id: 'purchasing', name: 'قسم الشراء', page: 'purchasing.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.5" fill="currentColor"/><circle cx="20" cy="21" r="1.5" fill="currentColor"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>' },
     { id: 'pricing', name: 'قائمة الأسعار', page: 'pricing.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>' },
-    { id: 'profits', name: 'الأرباح والمصروفات', page: 'profits.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18" /><path d="M17 6h6v6" /><rect x="1" y="20" width="22" height="2" rx="1" fill="currentColor" opacity="0.15"/></svg>' },
-    { id: 'accounts', name: 'الحسابات', page: 'accounts.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 10h20" opacity="0.4"/><path d="M6 15h4M14 15h4"/></svg>' },
-    { id: 'customers', name: 'العملاء', page: 'customers.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" opacity="0.4"/></svg>' },
+    { id: 'profits', name: 'الأرباح والمصروفات', page: 'profits.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18" /><path d="M17 6h6v6" /><rect x="1" y="20" width="22" height="2" rx="1" fill="currentColor" opacity="0.15"/></svg>', adminOnly: true },
+    { id: 'accounts', name: 'الحسابات', page: 'accounts.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 10h20" opacity="0.4"/><path d="M6 15h4M14 15h4"/></svg>', adminOnly: true },
+    { id: 'customers', name: 'العملاء', page: 'customers.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" opacity="0.4"/></svg>', adminOnly: true },
     { id: 'users', name: 'المستخدمين', page: 'users.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>' }
   ];
 
   let navHTML = '';
   if (currentProfile) {
+    const role = currentProfile.role;
+    const isPrivileged = ['admin', 'manager', 'purchasing_manager'].includes(role);
     navHTML = sectionMap
-      .filter(s => hasPermission(s.id))
+      .filter(s => {
+        if (s.adminOnly && !isPrivileged) return false;
+        return hasPermission(s.id);
+      })
       .map(s => `
         <a href="${s.page}" class="nav-item ${location.pathname.includes(s.page) ? 'active' : ''}">
           ${s.icon}
@@ -148,12 +154,32 @@ async function checkGlobalAlerts() {
   const todayNormalized = normalizeDate(new Date());
 
   try {
-    const [accRes, ordRes] = await Promise.all([
+    const [accRes, ordRes, notifRes] = await Promise.all([
       sb.from('accounts').select('*'),
-      sb.from('client_orders').select('*').eq('archived', false)
+      sb.from('client_orders').select('*').eq('archived', false),
+      sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(20)
     ]);
 
     let lateItems = [];
+
+    // ── Admin edit notifications (visible to all staff) ──
+    if (notifRes.data && currentProfile) {
+      const myId = currentProfile.id;
+      notifRes.data.forEach(notif => {
+        const readBy = notif.read_by || [];
+        if (!readBy.includes(myId)) {
+          lateItems.push({
+            id: notif.id,
+            name: notif.order_display_name || 'أوردر',
+            amount: 0,
+            date: notif.created_at ? new Date(notif.created_at) : null,
+            type: 'admin_edit',
+            source: notif.message,
+            notifId: notif.id
+          });
+        }
+      });
+    }
 
     if (accRes.data) {
       accRes.data.forEach(acc => {
@@ -342,6 +368,34 @@ async function checkGlobalAlerts() {
 
       body.innerHTML = '';
       lateItems.forEach(item => {
+        // ── Admin Edit Notification ──
+        if (item.type === 'admin_edit') {
+          const alertCard = document.createElement('div');
+          alertCard.className = 'notif-card';
+          alertCard.style = `
+            background: rgba(255,255,255,0.03);
+            border: 1px solid #6366f1;
+            border-right: 5px solid #6366f1;
+            padding: 1rem; border-radius: 8px; margin-bottom: 1rem;
+            display: flex; flex-direction: column; gap: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          `;
+          const dateStr = item.date ? new Date(item.date).toLocaleDateString('ar-EG') : '';
+          alertCard.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div style="font-weight:bold; color:#6366f1;">✏️ تعديل من المدير</div>
+              <div style="font-size:0.75rem; color:white; background:#6366f1; padding:2px 8px; border-radius:10px;">جديد</div>
+            </div>
+            <div style="font-size:0.85rem; color:var(--text-main); margin-top:3px;">${item.source}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px; border-top:1px solid rgba(255,255,255,0.05); padding-top:5px;">
+              <div style="font-size:0.7rem; color:var(--text-muted);">${dateStr}</div>
+              <button onclick="markNotifRead('${item.notifId}', this)" style="background:#e0e7ff;color:#4338ca;border:none;border-radius:6px;padding:3px 10px;font-size:0.72rem;font-weight:700;cursor:pointer;font-family:inherit;">تم القراءة ✓</button>
+            </div>
+          `;
+          body.appendChild(alertCard);
+          return;
+        }
+
         if (item.type === 'material_needed') {
           const alertCard = document.createElement('div');
           alertCard.className = 'notif-card';
@@ -562,6 +616,25 @@ function openNotificationsModal() {
 
 function closeNotificationsModal() {
   document.getElementById('global-notifications-modal').classList.add('hidden');
+}
+
+async function markNotifRead(notifId, btn) {
+  if (!currentProfile) return;
+  try {
+    const sb = getSupabase();
+    // Fetch current read_by array and append current user
+    const { data, error } = await sb.from('notifications').select('read_by').eq('id', notifId).single();
+    if (error) throw error;
+    const readBy = data.read_by || [];
+    if (!readBy.includes(currentProfile.id)) {
+      readBy.push(currentProfile.id);
+      await sb.from('notifications').update({ read_by: readBy }).eq('id', notifId);
+    }
+    // Animate and remove the card
+    const card = btn.closest('.notif-card');
+    if (card) { card.style.opacity = '0'; card.style.transition = 'opacity 0.3s'; setTimeout(() => card.remove(), 300); }
+    await checkGlobalAlerts();
+  } catch (e) { console.warn('markNotifRead error:', e.message); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

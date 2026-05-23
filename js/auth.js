@@ -39,7 +39,8 @@ async function initAuth() {
     'accounts.html': 'accounts',
     'profits.html': 'profits',
     'purchasing.html': 'purchasing',
-    'users.html': 'users'
+    'users.html': 'users',
+    'progress.html': 'progress'
   };
 
   if (window.location.pathname.includes('login.html')) {
@@ -87,14 +88,21 @@ function getRoleLabel(role) {
   if (role === 'purchasing_manager') return 'مدير مشتريات';
   if (role === 'inventory_manager') return 'مدير التجهيزات';
   if (role === 'production_engineer') return 'مهندس إنتاج';
-  if (role === 'manager') return 'مدير';
+  if (role === 'manager') return 'الأونر';
   return 'مستخدم';
 }
 
 function hasPermission(sectionId, mode = 'read') {
   if (sectionId === 'tasks') return true;
+  if (sectionId === 'progress') return true;
   if (!currentProfile) return false;
   const role = currentProfile.role;
+
+  // accounts, profits, customers restricted to admin + manager + purchasing_manager only
+  if (['accounts', 'profits', 'customers'].includes(sectionId)) {
+    return ['admin', 'manager', 'purchasing_manager'].includes(role);
+  }
+
   if (['admin', 'purchasing_manager', 'inventory_manager', 'production_engineer', 'manager'].includes(role)) {
     return true;
   }
@@ -126,7 +134,8 @@ function enforceRoutePermissions() {
     'profits.html': 'profits',
     'purchasing.html': 'purchasing',
     'users.html': 'users',
-    'tasks.html': 'tasks'
+    'tasks.html': 'tasks',
+    'progress.html': 'progress'
   };
 
   let currentSection = null;

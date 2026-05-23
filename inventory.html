@@ -53,6 +53,7 @@
             <thead>
               <tr>
                 <th>اسم الصنف</th>
+                <th>وحدة القياس</th>
                 <th>مخزن 1</th>
                 <th>مخزن 2</th>
                 <th>مخزن 3</th>
@@ -62,7 +63,7 @@
             </thead>
             <tbody id="inventory-table-body">
               <tr>
-                <td colspan="6" style="text-align:center;color:var(--text-muted)">جاري التحميل...</td>
+                <td colspan="7" style="text-align:center;color:var(--text-muted)">جاري التحميل...</td>
               </tr>
             </tbody>
           </table>
@@ -211,9 +212,13 @@
       try {
         const sb = getSupabase();
 
-        const { data: prices, error } = await sb.from('prices').select('item_name').order('item_name', { ascending: true });
+        const { data: prices, error } = await sb.from('prices').select('item_name, unit').order('item_name', { ascending: true });
 
         if (error) throw error;
+
+        // Store prices data globally for unit lookup
+        window.pricesMap = {};
+        (prices || []).forEach(p => { window.pricesMap[p.item_name] = p.unit || 'بالقطعة'; });
 
         const existingNames = inventoryData.map(i => i.item_name);
         const filteredPrices = (prices || []).filter(p => !existingNames.includes(p.item_name));
@@ -398,7 +403,7 @@
 
     function filterInventory() {
       const query = document.getElementById('inventory-search').value.trim().toLowerCase();
-      const filtered = inventoryData.filter(item => 
+      const filtered = inventoryData.filter(item =>
         item.item_name.toLowerCase().includes(query)
       );
       renderInventoryTable(filtered);
@@ -407,16 +412,19 @@
     function renderInventoryTable(data) {
       const tbody = document.getElementById('inventory-table-body');
       if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted); padding:2rem;">لا توجد نتائج تطابق البحث</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted); padding:2rem;">لا توجد نتائج تطابق البحث</td></tr>`;
         return;
       }
 
       tbody.innerHTML = '';
       data.forEach(item => {
         const total = (item.wh_1_qty || 0) + (item.wh_2_qty || 0) + (item.wh_3_qty || 0);
+        const unit = (window.pricesMap && window.pricesMap[item.item_name]) || '-';
+        const unitBadge = `<span style="background:var(--primary-bg);color:var(--primary);padding:1px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;">${unit}</span>`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${item.item_name}</strong></td>
+            <td>${unitBadge}</td>
             <td>${item.wh_1_qty || 0}</td>
             <td>${item.wh_2_qty || 0}</td>
             <td>${item.wh_3_qty || 0}</td>
@@ -435,7 +443,7 @@
                 </button>
               </div>
             </td>
-          `;
+        `;
         tbody.appendChild(tr);
       });
     }
