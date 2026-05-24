@@ -7,7 +7,6 @@ function renderLayout() {
     { id: 'progress', name: 'متابعة التقدم', page: 'progress.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
     { id: 'inventory', name: 'المخازن', page: 'inventory.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" opacity="0.5"/></svg>' },
     { id: 'purchasing', name: 'قسم الشراء', page: 'purchasing.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.5" fill="currentColor"/><circle cx="20" cy="21" r="1.5" fill="currentColor"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>' },
-    { id: 'pricing', name: 'قائمة الأسعار', page: 'pricing.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>' },
     { id: 'profits', name: 'الأرباح والمصروفات', page: 'profits.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18" /><path d="M17 6h6v6" /><rect x="1" y="20" width="22" height="2" rx="1" fill="currentColor" opacity="0.15"/></svg>', adminOnly: true },
     { id: 'accounts', name: 'الحسابات', page: 'accounts.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 10h20" opacity="0.4"/><path d="M6 15h4M14 15h4"/></svg>', adminOnly: true },
     { id: 'customers', name: 'العملاء', page: 'customers.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" opacity="0.4"/></svg>', adminOnly: true },
@@ -168,6 +167,13 @@ async function checkGlobalAlerts() {
       notifRes.data.forEach(notif => {
         const readBy = notif.read_by || [];
         if (!readBy.includes(myId)) {
+          // Restrict shortage approval notifications strictly to purchasing_manager, admin, and manager
+          if (notif.message.includes("تم اعتماد نواقص") || notif.message.includes("جاهزة للشراء")) {
+            if (!['purchasing_manager', 'admin', 'manager'].includes(currentProfile.role)) {
+              return;
+            }
+          }
+
           lateItems.push({
             id: notif.id,
             name: notif.order_display_name || 'أوردر',
@@ -381,9 +387,19 @@ async function checkGlobalAlerts() {
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
           `;
           const dateStr = item.date ? new Date(item.date).toLocaleDateString('ar-EG') : '';
+
+          let notifTitle = "✏️ تعديل من المدير";
+          if (item.source.includes("اعتماد نواقص") || item.source.includes("جاهزة للشراء")) {
+            notifTitle = "🎉 اعتماد نواقص الشراء";
+          } else if (item.source.includes("الكمية المطلوبة") || item.source.includes("خامات أوردر")) {
+            notifTitle = "🧱 تعديل خامات الطلبية";
+          } else if (item.source.includes("إشعار")) {
+            notifTitle = "🔔 إشعار جديد";
+          }
+
           alertCard.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-              <div style="font-weight:bold; color:#6366f1;">✏️ تعديل من المدير</div>
+              <div style="font-weight:bold; color:#6366f1;">${notifTitle}</div>
               <div style="font-size:0.75rem; color:white; background:#6366f1; padding:2px 8px; border-radius:10px;">جديد</div>
             </div>
             <div style="font-size:0.85rem; color:var(--text-main); margin-top:3px;">${item.source}</div>

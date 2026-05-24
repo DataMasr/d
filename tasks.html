@@ -18,159 +18,443 @@
       align-items: start;
       margin-top: 1.5rem;
     }
+
     @media (max-width: 900px) {
-      .tasks-container { grid-template-columns: 1fr; }
-      .orders-panel { position: static !important; }
-      .orders-list { max-height: 240px; }
+      .tasks-container {
+        grid-template-columns: 1fr;
+      }
+
+      .orders-panel {
+        position: static !important;
+      }
+
+      .orders-list {
+        max-height: 240px;
+      }
     }
 
     .orders-panel {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 1.25rem;
-      box-shadow: var(--shadow-sm); position: sticky; top: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 1.5rem;
     }
+
     .details-panel {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 1.5rem;
-      box-shadow: var(--shadow-sm); min-height: 60vh;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      min-height: 60vh;
     }
 
     .orders-search {
-      width: 100%; padding: 0.6rem 1rem; border-radius: 8px;
-      border: 1.5px solid var(--border); background: var(--bg-color);
-      font-family: inherit; font-size: 0.85rem; color: var(--text-main);
-      margin-top: 0.85rem; transition: border-color 0.2s; outline: none;
+      width: 100%;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-color);
+      font-family: inherit;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      margin-top: 0.85rem;
+      transition: border-color 0.2s;
+      outline: none;
     }
-    .orders-search:focus { border-color: var(--primary-light); }
-    .orders-list { max-height: calc(100vh - 330px); overflow-y: auto; margin-top: 0.85rem; }
-    .orders-list::-webkit-scrollbar { width: 4px; }
-    .orders-list::-webkit-scrollbar-thumb { background: #dde1e9; border-radius: 8px; }
+
+    .orders-search:focus {
+      border-color: var(--primary-light);
+    }
+
+    .orders-list {
+      max-height: calc(100vh - 330px);
+      overflow-y: auto;
+      margin-top: 0.85rem;
+    }
+
+    .orders-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .orders-list::-webkit-scrollbar-thumb {
+      background: #dde1e9;
+      border-radius: 8px;
+    }
 
     .task-order-item {
-      background: var(--bg-color); border: 1.5px solid var(--border);
-      border-radius: var(--radius); padding: 0.85rem 1rem;
-      margin-bottom: 0.6rem; cursor: pointer; transition: var(--transition);
-      position: relative; overflow: hidden;
+      background: var(--bg-color);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.6rem;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
     }
+
     .task-order-item::before {
-      content:''; position:absolute; right:0; top:0; bottom:0; width:3px;
-      background:transparent; border-radius:0 3px 3px 0; transition:background 0.2s;
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: transparent;
+      border-radius: 0 3px 3px 0;
+      transition: background 0.2s;
     }
-    .task-order-item:hover { box-shadow:var(--shadow-md); border-color:#c7d2fe; transform:translateY(-1px); }
-    .task-order-item:hover::before { background:var(--primary-light); }
-    .task-order-item.active { background:var(--primary-bg); border-color:rgba(79,70,229,0.2); }
-    .task-order-item.active::before { background:var(--primary); }
-    .order-progress-track { width:100%; height:4px; background:#e8ecf2; border-radius:10px; overflow:hidden; margin-top:0.5rem; }
-    .order-progress-bar { height:100%; background:linear-gradient(90deg,var(--primary),#818cf8); border-radius:10px; transition:width 0.4s; }
+
+    .task-order-item:hover {
+      box-shadow: var(--shadow-md);
+      border-color: #c7d2fe;
+      transform: translateY(-1px);
+    }
+
+    .task-order-item:hover::before {
+      background: var(--primary-light);
+    }
+
+    .task-order-item.active {
+      background: var(--primary-bg);
+      border-color: rgba(79, 70, 229, 0.2);
+    }
+
+    .task-order-item.active::before {
+      background: var(--primary);
+    }
+
+    .order-progress-track {
+      width: 100%;
+      height: 4px;
+      background: #e8ecf2;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .order-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), #818cf8);
+      border-radius: 10px;
+      transition: width 0.4s;
+    }
 
     .lanes-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
     }
-    @media (max-width: 1100px) { .lanes-grid { grid-template-columns: 1fr; } }
+
+    @media (max-width: 1100px) {
+      .lanes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
 
     .lane-card {
-      border-radius: var(--radius-lg); border: 1.5px solid var(--border);
-      overflow: hidden; transition: var(--transition);
+      border-radius: var(--radius-lg);
+      border: 1.5px solid var(--border);
+      overflow: hidden;
+      transition: var(--transition);
     }
+
     .lane-header {
       padding: 0.85rem 1rem;
-      display: flex; align-items: center; gap: 0.6rem;
-      font-weight: 800; font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 800;
+      font-size: 0.9rem;
     }
-    .lane-body { padding: 0.75rem; }
 
-    .lane-production .lane-header { background: rgba(124,58,237,0.07); color: #6d28d9; border-bottom: 1.5px solid rgba(124,58,237,0.12); }
-    .lane-production { border-color: rgba(124,58,237,0.2); }
-    .lane-inventory .lane-header { background: rgba(5,150,105,0.07); color: #047857; border-bottom: 1.5px solid rgba(5,150,105,0.12); }
-    .lane-inventory { border-color: rgba(5,150,105,0.2); }
-    .lane-purchasing .lane-header { background: rgba(217,119,6,0.07); color: #b45309; border-bottom: 1.5px solid rgba(217,119,6,0.12); }
-    .lane-purchasing { border-color: rgba(217,119,6,0.2); }
+    .lane-body {
+      padding: 0.75rem;
+    }
 
-    .lane-locked .lane-body { opacity: 0.55; pointer-events: none; }
+    .lane-production .lane-header {
+      background: rgba(124, 58, 237, 0.07);
+      color: #6d28d9;
+      border-bottom: 1.5px solid rgba(124, 58, 237, 0.12);
+    }
+
+    .lane-production {
+      border-color: rgba(124, 58, 237, 0.2);
+    }
+
+    .lane-inventory .lane-header {
+      background: rgba(5, 150, 105, 0.07);
+      color: #047857;
+      border-bottom: 1.5px solid rgba(5, 150, 105, 0.12);
+    }
+
+    .lane-inventory {
+      border-color: rgba(5, 150, 105, 0.2);
+    }
+
+    .lane-purchasing .lane-header {
+      background: rgba(217, 119, 6, 0.07);
+      color: #b45309;
+      border-bottom: 1.5px solid rgba(217, 119, 6, 0.12);
+    }
+
+    .lane-purchasing {
+      border-color: rgba(217, 119, 6, 0.2);
+    }
+
+    .lane-locked .lane-body {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
     .locked-badge {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      background: #f1f5f9; color: #64748b; padding: 3px 10px;
-      border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #f1f5f9;
+      color: #64748b;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
       border: 1px solid #e2e8f0;
     }
+
     .completed-badge {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      background: #dcfce7; color: #15803d; padding: 3px 10px;
-      border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #dcfce7;
+      color: #15803d;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
       border: 1px solid #bbf7d0;
     }
 
     .task-row {
-      display: flex; align-items: flex-start; gap: 0.6rem;
-      padding: 0.65rem 0.75rem; background: var(--bg-color);
-      border: 1.5px solid var(--border); border-radius: var(--radius);
-      margin-bottom: 0.5rem; transition: var(--transition);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      padding: 0.65rem 0.75rem;
+      background: var(--bg-color);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 0.5rem;
+      transition: var(--transition);
     }
-    .task-row:hover { border-color: #c7d2fe; }
-    .task-row.completed { background: rgba(5,150,105,0.03); border-color: rgba(5,150,105,0.15); }
-    .task-row.completed .task-text { text-decoration: line-through; color: var(--text-light); }
+
+    .task-row:hover {
+      border-color: #c7d2fe;
+    }
+
+    .task-row.completed {
+      background: rgba(5, 150, 105, 0.03);
+      border-color: rgba(5, 150, 105, 0.15);
+    }
+
+    .task-row.completed .task-text {
+      text-decoration: line-through;
+      color: var(--text-light);
+    }
 
     .custom-checkbox {
-      width: 20px; height: 20px; min-width: 20px;
-      border: 2px solid #c7d2fe; border-radius: 5px;
-      display: flex; align-items: center; justify-content: center;
-      transition: var(--transition); background: #fff; cursor: pointer; flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      border: 2px solid #c7d2fe;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      background: #fff;
+      cursor: pointer;
+      flex-shrink: 0;
     }
-    .task-row.completed .custom-checkbox { background: var(--success); border-color: var(--success); }
-    .custom-checkbox svg { width:11px; height:11px; fill:none; stroke:#fff; stroke-width:3; opacity:0; transition:opacity 0.15s; stroke-linecap:round; stroke-linejoin:round; }
-    .task-row.completed .custom-checkbox svg { opacity:1; }
-    .task-text { font-size: 0.85rem; font-weight: 600; flex: 1; line-height: 1.4; padding-top: 2px; }
+
+    .task-row.completed .custom-checkbox {
+      background: var(--success);
+      border-color: var(--success);
+    }
+
+    .custom-checkbox svg {
+      width: 11px;
+      height: 11px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 3;
+      opacity: 0;
+      transition: opacity 0.15s;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .task-row.completed .custom-checkbox svg {
+      opacity: 1;
+    }
+
+    .task-text {
+      font-size: 0.85rem;
+      font-weight: 600;
+      flex: 1;
+      line-height: 1.4;
+      padding-top: 2px;
+    }
 
     .btn-task-action {
-      background: transparent; border: none; cursor: pointer; padding: 3px;
-      border-radius: 5px; transition: var(--transition); display: flex; align-items: center; flex-shrink: 0;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 3px;
+      border-radius: 5px;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
     }
-    .btn-task-action:hover { background: #f1f5f9; }
-    .btn-task-delete:hover { background: #fee2e2; color: #ef4444; }
+
+    .btn-task-action:hover {
+      background: #f1f5f9;
+    }
+
+    .btn-task-delete:hover {
+      background: #fee2e2;
+      color: #ef4444;
+    }
 
     /* Purchase details */
     .purchase-details-strip {
       margin-top: 0.4rem;
-      display: flex; flex-wrap: wrap; gap: 0.35rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
     }
+
     .purchase-chip {
-      background: rgba(217,119,6,0.1); color: #92400e;
-      padding: 2px 8px; border-radius: 20px;
-      font-size: 0.71rem; font-weight: 700;
-      border: 1px solid rgba(217,119,6,0.2);
-      display: inline-flex; align-items: center; gap: 0.25rem;
+      background: rgba(217, 119, 6, 0.1);
+      color: #92400e;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.71rem;
+      font-weight: 700;
+      border: 1px solid rgba(217, 119, 6, 0.2);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
     }
 
     .add-task-form {
-      display: flex; gap: 0.5rem; margin-top: 0.5rem;
-      background: var(--bg-color); border: 1.5px dashed var(--border);
-      border-radius: var(--radius); padding: 0.6rem;
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      background: var(--bg-color);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 0.6rem;
     }
-    .add-task-form:focus-within { border-color: var(--primary-light); border-style: solid; }
+
+    .add-task-form:focus-within {
+      border-color: var(--primary-light);
+      border-style: solid;
+    }
+
     .add-task-input {
-      flex: 1; padding: 0.55rem 0.8rem; border-radius: 7px;
-      border: 1.5px solid var(--border); font-family: inherit; font-size: 0.85rem;
-      background: #fff; color: var(--text-main); outline: none; transition: border-color 0.2s;
+      flex: 1;
+      padding: 0.55rem 0.8rem;
+      border-radius: 7px;
+      border: 1.5px solid var(--border);
+      font-family: inherit;
+      font-size: 0.85rem;
+      background: #fff;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
     }
-    .add-task-input:focus { border-color: var(--primary-light); }
 
-    .lane-progress-wrap { padding: 0.5rem 0.75rem 0.25rem; }
-    .lane-progress-track { height: 4px; background: #e8ecf2; border-radius: 10px; overflow: hidden; }
-    .lane-progress-bar { height: 100%; border-radius: 10px; transition: width 0.4s; }
-    .lane-production .lane-progress-bar { background: linear-gradient(90deg,#7c3aed,#a78bfa); }
-    .lane-inventory .lane-progress-bar { background: linear-gradient(90deg,#059669,#34d399); }
-    .lane-purchasing .lane-progress-bar { background: linear-gradient(90deg,#d97706,#fbbf24); }
+    .add-task-input:focus {
+      border-color: var(--primary-light);
+    }
 
-    .purchase-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 480px) { .purchase-modal-grid { grid-template-columns: 1fr; } }
+    .lane-progress-wrap {
+      padding: 0.5rem 0.75rem 0.25rem;
+    }
 
-    .badge-stage { padding: 0.2rem 0.6rem; font-size: 0.68rem; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; white-space: nowrap; }
-    .stage-contract { background: rgba(5,150,105,0.08); color: #047857; border: 1px solid rgba(5,150,105,0.15); }
-    .stage-production { background: rgba(124,58,237,0.08); color: #6d28d9; border: 1px solid rgba(124,58,237,0.15); }
-    .stage-delivery { background: rgba(217,119,6,0.08); color: #b45309; border: 1px solid rgba(217,119,6,0.15); }
-    .stage-default { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+    .lane-progress-track {
+      height: 4px;
+      background: #e8ecf2;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .lane-progress-bar {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.4s;
+    }
+
+    .lane-production .lane-progress-bar {
+      background: linear-gradient(90deg, #7c3aed, #a78bfa);
+    }
+
+    .lane-inventory .lane-progress-bar {
+      background: linear-gradient(90deg, #059669, #34d399);
+    }
+
+    .lane-purchasing .lane-progress-bar {
+      background: linear-gradient(90deg, #d97706, #fbbf24);
+    }
+
+    .purchase-modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 480px) {
+      .purchase-modal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .badge-stage {
+      padding: 0.2rem 0.6rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .stage-contract {
+      background: rgba(5, 150, 105, 0.08);
+      color: #047857;
+      border: 1px solid rgba(5, 150, 105, 0.15);
+    }
+
+    .stage-production {
+      background: rgba(124, 58, 237, 0.08);
+      color: #6d28d9;
+      border: 1px solid rgba(124, 58, 237, 0.15);
+    }
+
+    .stage-delivery {
+      background: rgba(217, 119, 6, 0.08);
+      color: #b45309;
+      border: 1px solid rgba(217, 119, 6, 0.15);
+    }
+
+    .stage-default {
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
+    }
   </style>
 </head>
 
@@ -178,12 +462,15 @@
   <main class="main-content">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:0.75rem;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;flex-shrink:0;">
-          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" style="width:28px;height:28px;flex-shrink:0;">
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
         </svg>
         <div>
           <h1 style="font-size:1.4rem;margin:0;">قائمة المهام</h1>
-          <p style="font-size:0.82rem;color:var(--text-muted);margin-top:0.1rem;">كل دور يرى مهامه ويضيف عليها — الترتيب إلزامي</p>
+          <p style="font-size:0.82rem;color:var(--text-muted);margin-top:0.1rem;">كل دور يرى مهامه ويضيف عليها — الترتيب
+            إلزامي</p>
         </div>
       </div>
     </div>
@@ -194,32 +481,42 @@
           <span style="font-size:0.9rem;font-weight:800;color:var(--text-main);">الطلبيات النشطة</span>
           <span id="orders-badge" class="badge-stage stage-contract">0 طلبية</span>
         </div>
-        <input class="orders-search" type="text" id="search-orders" placeholder="🔍 ابحث..." oninput="filterOrdersList()">
+        <input class="orders-search" type="text" id="search-orders" placeholder="🔍 ابحث..."
+          oninput="filterOrdersList()">
         <div class="orders-list" id="orders-list-container">
-          <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-light);font-size:0.85rem;">جاري التحميل...</div>
+          <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-light);font-size:0.85rem;">جاري التحميل...
+          </div>
         </div>
       </div>
 
       <div class="details-panel" id="task-details-panel">
-        <div id="select-order-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;text-align:center;color:var(--text-light);">
-          <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;margin-bottom:1.25rem;">
-            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        <div id="select-order-placeholder"
+          style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;text-align:center;color:var(--text-light);">
+          <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1"
+            stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;margin-bottom:1.25rem;">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
           </svg>
-          <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-muted);margin-bottom:0.35rem;">اختر طلبية للبدء</h3>
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-muted);margin-bottom:0.35rem;">اختر طلبية للبدء
+          </h3>
           <p style="font-size:0.83rem;">اضغط على أي طلبية من القائمة لعرض مراحلها</p>
         </div>
 
         <div id="selected-order-view" class="hidden">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;padding-bottom:1.25rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);">
+          <div
+            style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;padding-bottom:1.25rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);">
             <div>
-              <h2 id="view-order-name" style="font-size:1.25rem;color:var(--primary);font-weight:800;margin-bottom:0.3rem;">-</h2>
+              <h2 id="view-order-name"
+                style="font-size:1.25rem;color:var(--primary);font-weight:800;margin-bottom:0.3rem;">-</h2>
               <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
                 <span id="view-order-stage-container"></span>
-                <span style="font-size:0.78rem;color:var(--text-muted);">📅 تسليم: <strong id="view-delivery-date" style="color:var(--text-main);">-</strong></span>
+                <span style="font-size:0.78rem;color:var(--text-muted);">📅 تسليم: <strong id="view-delivery-date"
+                    style="color:var(--text-main);">-</strong></span>
               </div>
             </div>
             <div style="text-align:center;min-width:80px;">
-              <div style="font-size:1.8rem;font-weight:900;color:var(--success);line-height:1;" id="overall-progress-pct">0%</div>
+              <div style="font-size:1.8rem;font-weight:900;color:var(--success);line-height:1;"
+                id="overall-progress-pct">0%</div>
               <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem;">إجمالي الإنجاز</div>
             </div>
           </div>
@@ -229,70 +526,19 @@
     </div>
   </main>
 
-  <!-- Purchase Details Modal -->
-  <div id="purchase-details-modal" class="modal-overlay hidden">
-    <div class="modal" style="max-width:500px;">
-      <div class="modal-header">
-        <h3>💰 تفاصيل الشراء</h3>
-        <button class="btn btn-secondary btn-sm" onclick="closePurchaseModal()" style="padding:0.5rem">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="purchase-lane-key">
-        <input type="hidden" id="purchase-task-idx">
-        <div class="purchase-modal-grid">
-          <div class="form-group">
-            <label for="purchase-supplier">اسم المورد</label>
-            <input type="text" id="purchase-supplier" placeholder="اسم المورد">
-          </div>
-          <div class="form-group">
-            <label for="purchase-price">السعر الإجمالي (جنيه)</label>
-            <input type="number" id="purchase-price" placeholder="0" min="0">
-          </div>
-          <div class="form-group">
-            <label for="purchase-payment-type">طريقة الدفع</label>
-            <select id="purchase-payment-type">
-              <option value="">-- اختر --</option>
-              <option value="كاش">كاش</option>
-              <option value="آجل">آجل</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="purchase-paid">المبلغ المدفوع (جنيه)</label>
-            <input type="number" id="purchase-paid" placeholder="0" min="0">
-          </div>
-        </div>
-        <div class="form-group" style="margin-top:0.5rem;">
-          <label for="purchase-notes">ملاحظات / مصاريف إضافية</label>
-          <textarea id="purchase-notes" rows="2" placeholder="مثال: مصاريف شحن 200 جنيه..."></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary" onclick="savePurchaseDetails()">حفظ التفاصيل</button>
-        <button class="btn btn-secondary" onclick="closePurchaseModal()">إلغاء</button>
-      </div>
-    </div>
-  </div>
+
 
   <script>
     // ─── Constants ───
     const LANES = [
-      { key: 'production_engineer', label: 'مهندس الإنتاج',   emoji: '⚙️', cssClass: 'lane-production' },
-      { key: 'inventory_manager',   label: 'مدير التجهيزات',  emoji: '📦', cssClass: 'lane-inventory'   },
-      { key: 'purchasing_manager',  label: 'مدير المشتريات', emoji: '🛒', cssClass: 'lane-purchasing'  }
+      { key: 'inventory_manager', label: 'مدير التجهيزات', emoji: '📦', cssClass: 'lane-inventory' },
+      { key: 'production_engineer', label: 'مهندس الإنتاج', emoji: '⚙️', cssClass: 'lane-production' },
+      { key: 'purchasing_manager', label: 'مدير المشتريات', emoji: '🛒', cssClass: 'lane-purchasing' }
     ];
 
-    // When a lane is completed → auto-advance to this stage
-    const LANE_NEXT_STAGE = {
-      'production_engineer': 'شراء الخامات',
-      'inventory_manager':   'قيد التصنيع / التجهيز',
-      'purchasing_manager':  'جاهز للتسليم'
-    };
-
-    let activeOrders  = [];
+    let activeOrders = [];
     let selectedOrder = null;
-    let searchFilter  = '';
+    let searchFilter = '';
     let currentUserRole = null;
 
     const IS_ADMIN_ROLE = (role) => ['admin', 'manager'].includes(role);
@@ -323,9 +569,7 @@
     }
 
     function isLaneLocked(laneKey, tasksObj) {
-      const laneIdx = LANES.findIndex(l => l.key === laneKey);
-      if (laneIdx === 0) return false;
-      return !isLaneComplete(tasksObj, LANES[laneIdx - 1].key);
+      return false;
     }
 
     function calcOverallProgress(tasksObj) {
@@ -401,7 +645,25 @@
     function renderSelectedOrderView() {
       if (!selectedOrder) return;
       document.getElementById('view-order-name').textContent = getOrderDisplayName(selectedOrder);
-      document.getElementById('view-order-stage-container').innerHTML = getStageBadgeHTML(selectedOrder.stage);
+
+      const stages = [
+        'تم التعاقد (دفع عربون)',
+        'شراء الخامات',
+        'قيد التنفيذ',
+        'قيد التصنيع / التجهيز',
+        'جاهز للتسليم',
+        'تم التسليم للزبون'
+      ];
+      let optionsHTML = stages.map(s => `
+        <option value="${s}" ${selectedOrder.stage === s ? 'selected' : ''}>${s}</option>
+      `).join('');
+
+      document.getElementById('view-order-stage-container').innerHTML = `
+        <select id="view-order-stage-select" onchange="changeOrderStage(this.value)" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; border-radius: 8px; border: 1.5px solid var(--border); font-family: inherit; background: var(--bg-color); color: var(--text-main); outline: none; cursor: pointer; transition: border-color 0.2s;">
+          ${optionsHTML}
+        </select>
+      `;
+
       document.getElementById('view-delivery-date').textContent = selectedOrder.delivery_date || 'غير محدد';
 
       const tasksObj = parseAllTasks(selectedOrder);
@@ -409,21 +671,39 @@
       renderLanes(tasksObj);
     }
 
+    async function changeOrderStage(newStage) {
+      if (!selectedOrder) return;
+      try {
+        const sb = getSupabase();
+        const { error } = await sb.from('client_orders').update({ stage: newStage }).eq('id', selectedOrder.id);
+        if (error) throw error;
+        selectedOrder.stage = newStage;
+        const inList = activeOrders.find(o => o.id === selectedOrder.id);
+        if (inList) inList.stage = newStage;
+
+        renderOrdersList();
+        renderSelectedOrderView();
+        showAlert('تم تحديث مرحلة الطلبية بنجاح! ✅', 'success');
+      } catch (err) {
+        showAlert('فشل تحديث المرحلة: ' + err.message, 'error');
+      }
+    }
+
     function renderLanes(tasksObj) {
       const container = document.getElementById('lanes-grid-container');
       container.innerHTML = '';
 
       LANES.forEach((lane, laneIdx) => {
-        const tasks   = tasksObj[lane.key] || [];
+        const tasks = tasksObj[lane.key] || [];
         const doneTasks = tasks.filter(t => t.done).length;
-        const total   = tasks.length;
-        const pct     = total > 0 ? Math.round((doneTasks / total) * 100) : 0;
-        const locked  = isLaneLocked(lane.key, tasksObj);
+        const total = tasks.length;
+        const pct = total > 0 ? Math.round((doneTasks / total) * 100) : 0;
+        const locked = isLaneLocked(lane.key, tasksObj);
         const allDone = total > 0 && doneTasks === total;
 
         // Can edit: my lane OR admin/manager (see all, edit all)
         const isMyLane = (currentUserRole === lane.key) || IS_ADMIN_ROLE(currentUserRole);
-        const canEdit  = isMyLane && !locked;
+        const canEdit = isMyLane && !locked;
 
         // ── Header badge ──
         let headerBadge = '';
@@ -446,26 +726,6 @@
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
             </button>` : '';
 
-            // ── Purchase details chips ──
-            let purchaseHTML = '';
-            const pd = task.purchase_details;
-            if (pd && typeof pd === 'object') {
-              const chips = [];
-              if (pd.supplier)      chips.push(`🏭 ${pd.supplier}`);
-              if (pd.price)         chips.push(`💰 ${Number(pd.price).toLocaleString()} جنيه`);
-              if (pd.payment_type)  chips.push(pd.payment_type === 'كاش' ? '💵 كاش' : '📋 آجل');
-              if (pd.paid)          chips.push(`✅ دُفع ${Number(pd.paid).toLocaleString()} جنيه`);
-              if (pd.notes)         chips.push(`📝 ${pd.notes}`);
-              if (chips.length > 0) {
-                purchaseHTML = `<div class="purchase-details-strip">${chips.map(c => `<span class="purchase-chip">${c}</span>`).join('')}</div>`;
-              }
-            }
-
-            // ── Purchase button: show for my lane OR admin ──
-            const purchaseBtn = (isMyLane && !locked) ? `<button class="btn-task-action" onclick="openPurchaseModal('${lane.key}', ${idx})" title="تفاصيل الشراء" style="color:#b45309;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1.5" fill="currentColor"/><circle cx="20" cy="21" r="1.5" fill="currentColor"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
-            </button>` : '';
-
             taskRowsHTML += `
               <div class="task-row ${task.done ? 'completed' : ''}">
                 <div class="custom-checkbox" ${checkboxClick} style="${!canEdit ? 'cursor:default;' : ''}">
@@ -473,9 +733,7 @@
                 </div>
                 <div style="flex:1;min-width:0;">
                   <span class="task-text">${task.text}</span>
-                  ${purchaseHTML}
                 </div>
-                ${purchaseBtn}
                 ${deleteBtn}
               </div>
             `;
@@ -529,24 +787,57 @@
 
       await saveAllTasks(selectedOrder.id, tasksObj);
 
-      // ── Auto-advance stage when lane is fully completed ──
-      const allDoneNow = tasks.length > 0 && tasks.every(t => t.done);
-      if (allDoneNow && LANE_NEXT_STAGE[laneKey]) {
-        try {
-          const nextStage = LANE_NEXT_STAGE[laneKey];
-          const sb = getSupabase();
-          await sb.from('client_orders').update({ stage: nextStage }).eq('id', selectedOrder.id);
-          selectedOrder.stage = nextStage;
-          const inList = activeOrders.find(o => o.id === selectedOrder.id);
-          if (inList) inList.stage = nextStage;
-          showAlert(`🎉 أحسنت! الأوردر انتقل تلقائياً لـ "${nextStage}"`, 'success');
-        } catch (e) {
-          console.warn('Stage advance error:', e.message);
-        }
-      }
+      await checkAndApplyStageCascade(selectedOrder.id, tasksObj);
 
       renderOrdersList();
       renderSelectedOrderView();
+    }
+
+    async function checkAndApplyStageCascade(orderId, tasksObj) {
+      const order = activeOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      let targetStage = null;
+
+      if (isLaneComplete(tasksObj, 'inventory_manager')) {
+        targetStage = 'قيد التنفيذ';
+
+        if (isLaneComplete(tasksObj, 'production_engineer')) {
+          targetStage = 'قيد التصنيع / التجهيز';
+
+          if (isLaneComplete(tasksObj, 'purchasing_manager')) {
+            targetStage = 'جاهز للتسليم';
+          }
+        }
+      }
+
+      if (targetStage && targetStage !== order.stage) {
+        const stageOrder = [
+          'تم التعاقد (دفع عربون)',
+          'شراء الخامات',
+          'قيد التنفيذ',
+          'قيد التصنيع / التجهيز',
+          'جاهز للتسليم',
+          'تم التسليم للزبون'
+        ];
+        const currentIdx = stageOrder.indexOf(order.stage);
+        const targetIdx = stageOrder.indexOf(targetStage);
+
+        if (targetIdx > currentIdx) {
+          try {
+            const sb = getSupabase();
+            const { error } = await sb.from('client_orders').update({ stage: targetStage }).eq('id', orderId);
+            if (error) throw error;
+            order.stage = targetStage;
+            if (selectedOrder && selectedOrder.id === orderId) {
+              selectedOrder.stage = targetStage;
+            }
+            showAlert(`🎉 رائع! انتقلت الطلبية تلقائياً إلى "${targetStage}" بعد اكتمال المراحل!`, 'success');
+          } catch (e) {
+            console.warn('Cascade update error:', e.message);
+          }
+        }
+      }
     }
 
     async function addTask(event, laneKey) {
@@ -576,54 +867,7 @@
       renderSelectedOrderView();
     }
 
-    // ─── Purchase Modal ───
-    function openPurchaseModal(laneKey, idx) {
-      const tasksObj = parseAllTasks(selectedOrder);
-      const task = (tasksObj[laneKey] || [])[idx];
-      if (!task) return;
 
-      document.getElementById('purchase-lane-key').value = laneKey;
-      document.getElementById('purchase-task-idx').value  = idx;
-
-      const pd = task.purchase_details || {};
-      document.getElementById('purchase-supplier').value      = pd.supplier || '';
-      document.getElementById('purchase-price').value         = pd.price || '';
-      document.getElementById('purchase-payment-type').value  = pd.payment_type || '';
-      document.getElementById('purchase-paid').value          = pd.paid || '';
-      document.getElementById('purchase-notes').value         = pd.notes || '';
-
-      document.getElementById('purchase-details-modal').classList.remove('hidden');
-    }
-
-    function closePurchaseModal() {
-      document.getElementById('purchase-details-modal').classList.add('hidden');
-    }
-
-    async function savePurchaseDetails() {
-      const laneKey = document.getElementById('purchase-lane-key').value;
-      const idx     = parseInt(document.getElementById('purchase-task-idx').value);
-      if (!selectedOrder) return;
-
-      const tasksObj = parseAllTasks(selectedOrder);
-      const task = (tasksObj[laneKey] || [])[idx];
-      if (!task) return;
-
-      task.purchase_details = {
-        supplier:     document.getElementById('purchase-supplier').value.trim() || null,
-        price:        document.getElementById('purchase-price').value ? parseFloat(document.getElementById('purchase-price').value) : null,
-        payment_type: document.getElementById('purchase-payment-type').value || null,
-        paid:         document.getElementById('purchase-paid').value ? parseFloat(document.getElementById('purchase-paid').value) : null,
-        notes:        document.getElementById('purchase-notes').value.trim() || null
-      };
-
-      // Clean nulls
-      Object.keys(task.purchase_details).forEach(k => { if (!task.purchase_details[k]) delete task.purchase_details[k]; });
-
-      await saveAllTasks(selectedOrder.id, tasksObj);
-      closePurchaseModal();
-      renderSelectedOrderView();
-      showAlert('تم حفظ تفاصيل الشراء ✅', 'success');
-    }
 
     // ─── Load Orders ───
     async function loadActiveOrders() {
@@ -666,4 +910,5 @@
     window.onload = initTasksPage;
   </script>
 </body>
+
 </html>

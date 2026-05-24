@@ -10,6 +10,34 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/layout.js"></script>
   <script src="js/auth.js"></script>
+  <style>
+    .cat-btn {
+      flex: 1; cursor: pointer; margin: 0;
+    }
+    .cat-btn input { display: none; }
+    .cat-btn span {
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+      padding: 0.65rem 0.5rem; border-radius: 8px;
+      font-weight: 700; font-size: 0.88rem; color: var(--text-muted);
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .cat-btn:hover span {
+      color: var(--text-main);
+    }
+    .cat-btn input:checked + span {
+      background: #fff; color: var(--primary);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .datalist-input {
+      width: 100%; padding: 0.8rem 1rem; border: 1.5px solid var(--border); border-radius: var(--radius);
+      font-family: inherit; font-size: 0.95rem; color: var(--text-main); background: #fff;
+      transition: var(--transition);
+    }
+    .datalist-input:focus { 
+      border-color: var(--primary); outline: none; 
+      box-shadow: 0 0 0 4px rgba(79,70,229,0.1); 
+    }
+  </style>
 </head>
 
 <body>
@@ -84,26 +112,117 @@
         </div>
         <div class="modal-body">
           <form id="create-item-form">
+            <!-- Category Selector -->
+            <div style="background: var(--border-light); padding: 0.35rem; border-radius: 10px; display: flex; gap: 0.25rem; margin-bottom: 1.5rem;">
+              <label class="cat-btn">
+                <input type="radio" name="item_category" value="normal" checked onchange="toggleItemCategory()" style="display:none;">
+                <span>📦 صنف عادي</span>
+              </label>
+              <label class="cat-btn">
+                <input type="radio" name="item_category" value="paper" onchange="toggleItemCategory()" style="display:none;">
+                <span>📄 ورق</span>
+              </label>
+              <label class="cat-btn">
+                <input type="radio" name="item_category" value="special" onchange="toggleItemCategory()" style="display:none;">
+                <span>🧽 خامات خاصة</span>
+              </label>
+            </div>
+
+            <!-- Normal Item Fields -->
+            <div id="create-normal-fields">
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="new-item-name">اسم الصنف (مثال: كرتون بلاستيك) *</label>
+                <input type="text" id="new-item-name" placeholder="اكتب اسم الصنف هنا" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+              </div>
+            </div>
+
+            <!-- Paper Fields -->
+            <div id="create-paper-fields" class="hidden">
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="paper-type">نوع الورق *</label>
+                <select id="paper-type" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                  <option value="كوشيه">كوشيه</option>
+                  <option value="طبع">طبع</option>
+                  <option value="بيرستول كوشيه">بيرستول كوشيه</option>
+                  <option value="فيبراينو">فيبراينو</option>
+                  <option value="عجينة">عجينة</option>
+                </select>
+              </div>
+              <div style="display:flex; gap:1rem; margin-bottom: 1rem;">
+                <div class="form-group" style="flex:1;">
+                  <label for="paper-gram">الجرام *</label>
+                  <input type="number" id="paper-gram" placeholder="مثال: 150" min="0" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label for="paper-size">المقاس *</label>
+                  <input type="text" id="paper-size" list="paper-sizes-list" class="datalist-input" placeholder="مثال: 70x100" dir="ltr" style="text-align:right; width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                  <datalist id="paper-sizes-list">
+                    <option value="70x100"></option>
+                    <option value="60x90"></option>
+                    <option value="A3"></option>
+                    <option value="A4"></option>
+                  </datalist>
+                </div>
+              </div>
+            </div>
+
+            <!-- Special Fields -->
+            <div id="create-special-fields" class="hidden">
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="special-type">نوع الخامة *</label>
+                <select id="special-type" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                  <option value="سفنج">سفنج</option>
+                  <option value="فوم">فوم</option>
+                  <option value="كاوتش">كاوتش</option>
+                </select>
+              </div>
+              <div style="display:flex; gap:0.75rem; margin-bottom: 1rem; flex-wrap:wrap;">
+                <div class="form-group" style="flex:1; min-width:80px;">
+                  <label for="special-thickness">السمك *</label>
+                  <input type="text" id="special-thickness" list="thick-options" class="datalist-input" placeholder="مثال: 5 سم" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                  <datalist id="thick-options">
+                    <option value="2 ملي"></option>
+                    <option value="5 ملي"></option>
+                    <option value="1 سم"></option>
+                    <option value="5 سم"></option>
+                    <option value="10 سم"></option>
+                  </datalist>
+                </div>
+                <div class="form-group" style="flex:1; min-width:80px;">
+                  <label for="special-color">درجة اللون *</label>
+                  <input type="text" id="special-color" placeholder="مثال: أبيض" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                </div>
+                <div class="form-group" style="flex:1; min-width:80px;">
+                  <label for="special-size">المقاس *</label>
+                  <input type="text" id="special-size" placeholder="مثال: 100x200" dir="ltr" style="text-align:right; width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                </div>
+              </div>
+            </div>
+
+            <!-- Unit field -->
             <div class="form-group" style="margin-bottom: 1rem;">
-              <label for="new-item-name">اختر الصنف (من قائمة الأسعار) *</label>
-              <select id="new-item-name" required>
-                <option value="">جاري تحميل الأصناف...</option>
+              <label for="new-item-unit">وحدة الحساب *</label>
+              <select id="new-item-unit" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+                <option value="بالقطعة">بالقطعة (العدد)</option>
+                <option value="بالمتر">بالمتر</option>
               </select>
             </div>
+
+            <!-- Opening Balances (remains common for both) -->
             <div class="form-group" style="margin-bottom: 1rem;">
               <label>الرصيد الافتتاحي (اختياري)</label>
               <div style="display:flex;gap:1rem;margin-top:0.5rem;">
                 <div>
                   <label for="new-wh1" style="font-size:0.75rem;color:var(--text-muted)">مخزن 1</label>
-                  <input type="number" id="new-wh1" min="0" placeholder="0" style="width:100%">
+                  <input type="number" id="new-wh1" min="0" placeholder="0" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
                 </div>
                 <div>
                   <label for="new-wh2" style="font-size:0.75rem;color:var(--text-muted)">مخزن 2</label>
-                  <input type="number" id="new-wh2" min="0" placeholder="0" style="width:100%">
+                  <input type="number" id="new-wh2" min="0" placeholder="0" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
                 </div>
                 <div>
                   <label for="new-wh3" style="font-size:0.75rem;color:var(--text-muted)">مخزن 3</label>
-                  <input type="number" id="new-wh3" min="0" placeholder="0" style="width:100%">
+                  <input type="number" id="new-wh3" min="0" placeholder="0" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
                 </div>
               </div>
             </div>
@@ -205,39 +324,43 @@
       document.getElementById(id).classList.add('hidden');
     }
 
-    async function openCreateItemModal() {
-      const select = document.getElementById('new-item-name');
-      select.innerHTML = '<option value="">جاري التحميل...</option>';
+    function toggleItemCategory() {
+      const category = document.querySelector('input[name="item_category"]:checked').value;
+      const unitSelect = document.getElementById('new-item-unit');
 
-      try {
-        const sb = getSupabase();
+      document.getElementById('create-normal-fields').classList.add('hidden');
+      document.getElementById('create-paper-fields').classList.add('hidden');
+      document.getElementById('create-special-fields').classList.add('hidden');
 
-        const { data: prices, error } = await sb.from('prices').select('item_name, unit').order('item_name', { ascending: true });
-
-        if (error) throw error;
-
-        // Store prices data globally for unit lookup
-        window.pricesMap = {};
-        (prices || []).forEach(p => { window.pricesMap[p.item_name] = p.unit || 'بالقطعة'; });
-
-        const existingNames = inventoryData.map(i => i.item_name);
-        const filteredPrices = (prices || []).filter(p => !existingNames.includes(p.item_name));
-
-        if (filteredPrices.length === 0) {
-          select.innerHTML = '<option value="">جميع الأصناف معرفة بالفعل أو القائمة فارغة</option>';
-        } else {
-          select.innerHTML = '<option value="">-- اختر الصنف --</option>';
-          filteredPrices.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.item_name;
-            opt.textContent = p.item_name;
-            select.appendChild(opt);
-          });
-        }
-      } catch (e) {
-        console.error(e);
-        select.innerHTML = '<option value="">فشل تحميل القائمة</option>';
+      if (category === 'paper') {
+        document.getElementById('create-paper-fields').classList.remove('hidden');
+        unitSelect.value = 'بالقطعة';
+        unitSelect.disabled = true;
+      } else if (category === 'special') {
+        document.getElementById('create-special-fields').classList.remove('hidden');
+        unitSelect.value = 'بالقطعة';
+        unitSelect.disabled = false;
+      } else {
+        document.getElementById('create-normal-fields').classList.remove('hidden');
+        unitSelect.disabled = false;
       }
+    }
+
+    async function openCreateItemModal() {
+      // Clear inputs
+      document.getElementById('new-item-name').value = '';
+      document.getElementById('paper-gram').value = '';
+      document.getElementById('paper-size').value = '';
+      document.getElementById('special-thickness').value = '';
+      document.getElementById('special-color').value = '';
+      document.getElementById('special-size').value = '';
+      document.getElementById('new-wh1').value = '';
+      document.getElementById('new-wh2').value = '';
+      document.getElementById('new-wh3').value = '';
+
+      // Reset toggles to defaults
+      document.querySelector('input[name="item_category"][value="normal"]').checked = true;
+      toggleItemCategory();
 
       openModal('create-item-modal');
     }
@@ -257,17 +380,71 @@
 
     async function submitCreateItem() {
       const form = document.getElementById('create-item-form');
-      if (!form.checkValidity()) { form.reportValidity(); return; }
-
-      const name = document.getElementById('new-item-name').value;
+      
       const wh1 = parseInt(document.getElementById('new-wh1').value || '0', 10);
       const wh2 = parseInt(document.getElementById('new-wh2').value || '0', 10);
       const wh3 = parseInt(document.getElementById('new-wh3').value || '0', 10);
+      const sb = getSupabase();
+
+      let name = '';
+      let unit = 'بالقطعة';
+
+      // Brand new item calculation
+      const category = document.querySelector('input[name="item_category"]:checked').value;
+      unit = document.getElementById('new-item-unit').value;
+
+      if (category === 'paper') {
+        const pType = document.getElementById('paper-type').value;
+        const pGram = document.getElementById('paper-gram').value;
+        const pSize = document.getElementById('paper-size').value;
+        if (!pGram || !pSize) {
+          showAlert('يرجى إدخال جرامات ومقاس الورق', 'error');
+          return;
+        }
+        name = `ورق ${pType} | ${pGram} جرام | مقاس ${pSize}`;
+        unit = 'بالقطعة';
+      } else if (category === 'special') {
+        const sType = document.getElementById('special-type').value;
+        const sThick = document.getElementById('special-thickness').value;
+        const sColor = document.getElementById('special-color').value;
+        const sSize = document.getElementById('special-size').value;
+        if (!sThick || !sColor || !sSize) {
+          showAlert('يرجى إدخال السمك، درجة اللون، والمقاس', 'error');
+          return;
+        }
+        name = `${sType} | سمك ${sThick} | لون ${sColor} | مقاس ${sSize}`;
+      } else {
+        name = document.getElementById('new-item-name').value.trim();
+        if (!name) {
+          showAlert('يرجى إدخال اسم الصنف', 'error');
+          return;
+        }
+      }
+
+      // Check if it already exists in inventoryData
+      const exists = inventoryData.some(i => i.item_name.toLowerCase() === name.toLowerCase());
+      if (exists) {
+        showAlert('هذا الصنف معرف بالفعل في المخازن!', 'error');
+        return;
+      }
 
       try {
         showAlert('جاري حفظ الصنف...', 'pending');
-        const sb = getSupabase();
 
+        // 1. Insert or update the prices table so the unit of measurement is linked
+        const { data: existingPrice } = await sb.from('prices').select('*').eq('item_name', name).limit(1);
+        if (!existingPrice || existingPrice.length === 0) {
+          const { error: priceErr } = await sb.from('prices').insert([{
+            item_name: name,
+            unit: unit
+          }]);
+          if (priceErr) throw priceErr;
+        } else {
+          const { error: priceErr } = await sb.from('prices').update({ unit: unit }).eq('item_name', name);
+          if (priceErr) throw priceErr;
+        }
+
+        // 2. Insert into inventory
         const { error } = await sb.from('inventory').insert([{
           item_name: name,
           wh_1_qty: wh1,
@@ -455,20 +632,27 @@
       const tbody = document.getElementById('inventory-table-body');
 
       try {
+        // Fetch prices to populate window.pricesMap for units lookup
+        const { data: prices } = await sb.from('prices').select('item_name, unit');
+        window.pricesMap = {};
+        (prices || []).forEach(p => {
+          window.pricesMap[p.item_name] = p.unit || 'بالقطعة';
+        });
+
         const { data, error } = await sb.from('inventory').select('*').order('created_at', { ascending: false });
         if (error) throw error;
 
         inventoryData = data || [];
 
         if (inventoryData.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا يوجد أصناف في المخازن حالياً</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">لا يوجد أصناف في المخازن حالياً</td></tr>`;
           return;
         }
 
         filterInventory();
       } catch (e) {
         console.error(e);
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--error)">تأكد من إنشاء جدول inventory في قاعدة البيانات: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--error)">تأكد من إنشاء جدول inventory في قاعدة البيانات: ${e.message}</td></tr>`;
       }
 
       await fetchGlobalLogs();

@@ -239,8 +239,8 @@
             <thead>
               <tr>
                 <th>العميل</th>
-                <th>المبالغ</th>
-                <th>الأقساط</th>
+                <th class="financial-field">المبالغ</th>
+                <th class="financial-field">الأقساط</th>
                 <th>موعد التسليم</th>
                 <th>تفاصيل الطلب والخامات</th>
                 <th>المرحلة</th>
@@ -379,7 +379,7 @@
           <form id="update-client-order-form">
             <input type="hidden" id="upd-order-id">
 
-            <div class="form-group" style="margin-bottom: 1rem;">
+            <div class="form-group financial-field" style="margin-bottom: 1rem;">
               <label for="upd-paid-amount">المدفوع حتى الآن</label>
               <input type="number" id="upd-paid-amount" required min="0">
               <small style="color:var(--text-muted)">قم بزيادة الرقم إذا دفع الزبون دفعة جديدة.</small>
@@ -403,6 +403,11 @@
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem; grid-column: 1 / -1;">
+              <label for="upd-order-details">تفاصيل ومواصفات الطلب</label>
+              <textarea id="upd-order-details" rows="3" placeholder="اكتب تفاصيل الطلب، المقاسات، الألوان، وأي متطلبات خاصة هنا..."></textarea>
+            </div>
+
+            <div class="form-group financial-field" style="margin-bottom: 1rem; grid-column: 1 / -1;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
                 <label style="margin:0;">خطة سداد الأقساط (اختياري)</label>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="addInstallmentRowToUpdate()">+ إضافة
@@ -878,6 +883,24 @@
           const { error: updError } = await sb.from('client_orders').update(updateData).eq('id', orderId);
           if (updError) throw updError;
 
+          // Send notification about quantity / materials edit by Manager or Purchasing Manager
+          const role = currentProfile ? currentProfile.role : 'user';
+          if (['admin', 'manager', 'purchasing_manager'].includes(role)) {
+            try {
+              const roleText = (role === 'admin' || role === 'manager') ? 'المدير' : 'مدير المشتريات';
+              const displayName = order.order_display_name || order.client_name || 'أوردر';
+              await sb.from('notifications').insert([{
+                order_id: orderId,
+                order_display_name: displayName,
+                message: `قام ${roleText} بتعديل الكميات المطلوبة لخامات أوردر: ${displayName}`,
+                created_by: currentUser ? currentUser.id : null,
+                read_by: []
+              }]);
+            } catch (notifErr) {
+              console.warn('Failed to send edit quantity notification:', notifErr.message);
+            }
+          }
+
           if (totalManufacturingCost > 0) {
             const { error: expError } = await sb.from('expenses').insert([{
               expense_date: new Date().toISOString().split('T')[0],
@@ -1041,10 +1064,40 @@
         const order = clientOrdersData.find(o => o.id === orderId);
         if (!order) return;
 
+        const role = currentProfile ? currentProfile.role : 'user';
+        const canSeeFinancials = ['manager', 'admin', 'purchasing_manager'].includes(role);
+
         document.getElementById('upd-order-id').value = order.id;
-        document.getElementById('upd-paid-amount').value = order.paid_amount;
+        const paidInput = document.getElementById('upd-paid-amount');
+        paidInput.value = order.paid_amount;
+        if (!canSeeFinancials) {
+          paidInput.removeAttribute('required');
+        } else {
+          paidInput.setAttribute('required', 'required');
+        }
         document.getElementById('upd-stage').value = order.stage || 'تم التعاقد (دفع عربون)';
         document.getElementById('upd-delivery-date').value = order.delivery_date || '';
+
+        // Extract order details from material_notes
+        let extractedDetails = '';
+        if (order.material_notes) {
+          const cleanLines = order.material_notes.split('\n').filter(line => {
+            const hasTrack = line.includes('<!--TRACK:');
+            const hasCost = line.includes('إجمالي تكلفة التصنيع');
+            const hasDraw = line.includes('تم سحب') && line.includes('من');
+            const hasBuy = line.includes('تم طلب شراء') && line.includes('من');
+            const hasDashes = line.trim() === '---------------------------';
+            const hasDeficit = line.includes('عجز (مطلوب شراء)');
+            const hasIssue = line.includes('<!--MATERIAL_ISSUE:') || line.includes('مشكلة في الخامات (تم الإبلاغ عنها):');
+            const hasArchived = line.includes('<!--ARCHIVED_AT:');
+            return !hasTrack && !hasCost && !hasDraw && !hasBuy && !hasDashes && !hasDeficit && !hasIssue && !hasArchived;
+          });
+
+          let text = cleanLines.join('\n').trim();
+          text = text.replace(/^📝 تفاصيل الطلب:\s*/, '');
+          extractedDetails = text.replace(/<!--[\s\S]*?-->/g, '').trim();
+        }
+        document.getElementById('upd-order-details').value = extractedDetails;
 
         const instContainer = document.getElementById('upd-installments-container');
         instContainer.innerHTML = '';
@@ -1073,26 +1126,64 @@
         });
         const paymentPlan = installments.length > 0 ? JSON.stringify(installments) : '';
 
+        const role = currentProfile ? currentProfile.role : 'user';
+        const canSeeFinancials = ['manager', 'admin', 'purchasing_manager'].includes(role);
+
         try {
           showAlert('جاري التحديث...', 'pending');
           const sb = getSupabase();
 
           const isDelivered = (stage === 'تم التسليم للزبون');
-          let materialNotes = (clientOrdersData.find(o => o.id === orderId)?.material_notes || '');
+          const originalNotes = (clientOrdersData.find(o => o.id === orderId)?.material_notes || '');
+          const newDetails = document.getElementById('upd-order-details').value.trim();
+
+          // Split original notes by line and keep only system/materials lines
+          const systemLines = originalNotes.split('\n').filter(line => {
+            const hasTrack = line.includes('<!--TRACK:');
+            const hasCost = line.includes('إجمالي تكلفة التصنيع');
+            const hasDraw = line.includes('تم سحب') && line.includes('من');
+            const hasBuy = line.includes('تم طلب شراء') && line.includes('من');
+            const hasDashes = line.trim() === '---------------------------';
+            const hasDeficit = line.includes('عجز (مطلوب شراء)');
+            const hasIssue = line.includes('<!--MATERIAL_ISSUE:') || line.includes('مشكلة في الخامات (تم الإبلاغ عنها):');
+            const hasArchived = line.includes('<!--ARCHIVED_AT:');
+            return hasTrack || hasCost || hasDraw || hasBuy || hasDashes || hasDeficit || hasIssue || hasArchived;
+          });
+
+          // Rebuild final material_notes
+          let materialNotes = '';
+          if (newDetails) {
+            materialNotes = `📝 تفاصيل الطلب: ${newDetails}`;
+          }
+
+          // If there are system lines (like materials or costs), append them with a separator
+          const cleanSystemLines = systemLines.filter(line => line.trim() !== '---------------------------');
+          if (cleanSystemLines.length > 0) {
+            if (materialNotes) {
+              materialNotes += '\n---------------------------\n' + cleanSystemLines.join('\n');
+            } else {
+              materialNotes = cleanSystemLines.join('\n');
+            }
+          }
 
           if (isDelivered) {
             const now = Date.now();
             materialNotes += ` <!--ARCHIVED_AT:${now}-->`;
           }
 
-          const { error } = await sb.from('client_orders').update({
-            paid_amount: paidAmount,
-            payment_plan: paymentPlan,
+          let updateData = {
             stage: stage,
             delivery_date: deliveryDate,
             archived: isDelivered,
             material_notes: materialNotes
-          }).eq('id', orderId);
+          };
+
+          if (canSeeFinancials) {
+            updateData.paid_amount = paidAmount;
+            updateData.payment_plan = paymentPlan;
+          }
+
+          const { error } = await sb.from('client_orders').update(updateData).eq('id', orderId);
 
           if (error) throw error;
 
@@ -1258,6 +1349,19 @@
           if (prodApproved && purchApproved) {
             updateFields.material_notes = (order.material_notes || '').replace(/عجز \(مطلوب شراء\)/g, 'عجز (معتمد للشراء)');
             updateFields.stage = 'قيد التنفيذ';
+
+            try {
+              const displayName = order.order_display_name || order.client_name || 'أوردر';
+              await sb.from('notifications').insert([{
+                order_id: orderId,
+                order_display_name: displayName,
+                message: `🎉 تم اعتماد نواقص طلبية العميل "${displayName}" بالكامل وهي جاهزة للشراء الآن!`,
+                created_by: currentUser ? currentUser.id : null,
+                read_by: []
+              }]);
+            } catch (notifErr) {
+              console.warn('Failed to send shortage approval notification:', notifErr.message);
+            }
           }
 
           const { error: updateErr } = await sb.from('client_orders').update(updateFields).eq('id', orderId);
@@ -1322,6 +1426,8 @@
         const isManagerOrAdmin = ['manager', 'admin'].includes(role);
         // manager + purchasing_manager see client name in addition to display name
         const canSeeClientName = ['manager', 'admin', 'purchasing_manager'].includes(role);
+        const canSeeFinancials = ['manager', 'admin', 'purchasing_manager'].includes(role);
+        const canEditMaterials = ['inventory_manager', 'admin', 'manager', 'purchasing_manager'].includes(role);
 
         if (data.length === 0) {
           tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted); padding:3rem;">لا توجد نتائج تطابق البحث</td></tr>`;
@@ -1356,6 +1462,9 @@
           const paidPercent = order.total_price > 0 ? Math.round((order.paid_amount / order.total_price) * 100) : 0;
 
           let cleanNotes = (order.material_notes || '').replace(/<!--.*?-->/g, '').trim();
+          if (!canSeeFinancials) {
+            cleanNotes = cleanNotes.split('\n').filter(line => !line.includes('إجمالي تكلفة التصنيع')).join('\n').trim();
+          }
           cleanNotes = cleanNotes.replace(/---------------------------/g, '<hr style="margin:0.5rem 0; border:0; border-top:1px dashed #cbd5e1;">');
           cleanNotes = cleanNotes.replace(/📝 تفاصيل الطلب:/g, '<strong style="color:var(--primary); font-size:0.85rem; display:block; margin-bottom:0.2rem;">📝 تفاصيل الطلب:</strong>');
           cleanNotes = cleanNotes.replace(/\| إجمالي تكلفة التصنيع:/g, '<strong style="color:var(--error); font-size:0.8rem; display:block; margin-top:0.4rem;">💰 إجمالي تكلفة التصنيع:');
@@ -1366,14 +1475,25 @@
           
           // Name cell: show display_name for all; show client_name only for privileged roles
           const displayName = order.order_display_name || order.client_name;
+          const customerObj = customersList.find(c => c.name === order.client_name);
+          const clientPhone = customerObj ? customerObj.phone : null;
+
           let nameCellHTML;
           if (canSeeClientName) {
             // Privileged: show display name in large text, client name below as label
             nameCellHTML = `
               <div style="font-weight:800; font-size:1rem; color:var(--primary);">${displayName}</div>
-              <div style="margin-top:0.25rem; display:flex; align-items:center; gap:0.35rem;">
-                <span style="font-size:0.68rem; font-weight:700; background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px;">عميل</span>
-                <span style="font-size:0.8rem; color:var(--text-main); font-weight:700;">${order.client_name}</span>
+              <div style="margin-top:0.25rem; display:flex; flex-direction:column; gap:0.25rem;">
+                <div style="display:flex; align-items:center; gap:0.35rem;">
+                  <span style="font-size:0.68rem; font-weight:700; background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px;">عميل</span>
+                  <span style="font-size:0.8rem; color:var(--text-main); font-weight:700;">${order.client_name}</span>
+                </div>
+                ${clientPhone ? `
+                  <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.78rem; color:var(--text-muted); font-weight:600;">
+                    <span>📞</span>
+                    <a href="tel:${clientPhone}" style="color:inherit; text-decoration:none;">${clientPhone}</a>
+                  </div>
+                ` : ''}
               </div>
               <div style="font-size:0.73rem; color:var(--text-muted); margin-top:0.2rem;">${new Date(order.created_at).toLocaleDateString('ar-EG')}</div>
             `;
@@ -1387,7 +1507,7 @@
 
           tr.innerHTML = `
             <td>${nameCellHTML}</td>
-            <td style="min-width:140px;">
+            <td class="financial-field" style="min-width:140px; ${canSeeFinancials ? '' : 'display:none;'}">
               <div style="display:flex; flex-direction:column; gap:0.3rem;">
                 <div style="display:flex; justify-content:space-between; font-size:0.82rem;">
                   <span style="color:var(--text-muted);">الإجمالي:</span>
@@ -1408,7 +1528,7 @@
                 </div>
               </div>
             </td>
-            <td style="font-size:0.8rem; color:var(--text-muted);">${planDisplay || '<span style="color:#cbd5e1;">—</span>'}</td>
+            <td class="financial-field" style="font-size:0.8rem; color:var(--text-muted); ${canSeeFinancials ? '' : 'display:none;'}">${planDisplay || '<span style="color:#cbd5e1;">—</span>'}</td>
             <td>
               <div style="font-size:0.875rem; font-weight:600; color:var(--text-main);">${order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('ar-EG') : '—'}</div>
             </td>
@@ -1423,7 +1543,7 @@
             <td>
               <div style="display:flex; flex-direction:column; gap:0.4rem; justify-content:center; align-items:center;">
                 <div style="display:flex; gap:0.4rem; flex-wrap:wrap; justify-content:center;">
-                  ${isPrepManagerOrAdmin ? `
+                  ${canEditMaterials ? `
                     ${!(order.material_notes && order.material_notes.includes('<!--TRACK:')) ? `
                     <button onclick="openAddMaterialsModal('${order.id}')" title="تحديد الخامات المستخدمة"
                       style="background:#fef08a; color:#854d0e; border:none; border-radius:8px; padding:0.4rem 0.7rem; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:0.3rem;">
@@ -1554,18 +1674,24 @@
         const tbody = document.getElementById('client-orders-table-body');
 
         try {
-          const [{ data: invData }, { data: prcData }, { data: orders, error: ordersErr }] = await Promise.all([
+          const [{ data: invData }, { data: prcData }, { data: custData }, { data: orders, error: ordersErr }] = await Promise.all([
             sb.from('inventory').select('*'),
             sb.from('prices').select('*'),
+            sb.from('customers').select('*'),
             sb.from('client_orders').select('*').eq('archived', false).order('created_at', { ascending: false })
           ]);
 
           if (invData) inventoryItems = invData;
           if (prcData) pricesList = prcData;
+          if (custData) customersList = custData;
           if (ordersErr) throw ordersErr;
           clientOrdersData = orders || [];
 
           const role = currentProfile ? currentProfile.role : 'user';
+          const canSeeFinancials = ['manager', 'admin', 'purchasing_manager'].includes(role);
+          document.querySelectorAll('.financial-field').forEach(el => {
+            el.style.display = canSeeFinancials ? '' : 'none';
+          });
 
           // Show/Hide Create Order button based on role
           const createBtn = document.getElementById('create-order-btn');

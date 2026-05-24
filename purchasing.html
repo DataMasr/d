@@ -695,7 +695,7 @@
           <input type="number" class="split-sup-paid" placeholder="المدفوع" min="0" step="any" required readonly style="padding:0.4rem; font-size:0.8rem;" oninput="updateModalSummary()">
         </div>
         <div class="form-group split-sup-duedate-group" id="duedate-group-${rowId}" style="margin:0; visibility:hidden;">
-          <label style="font-size:0.7rem;">تاريخ الاستحقاق *</label>
+          <label style="font-size:0.7rem;">تاريخ الاستحقاق</label>
           <input type="date" class="split-sup-duedate" style="padding:0.4rem; font-size:0.8rem;">
         </div>
         <button type="button" class="btn btn-secondary btn-sm" onclick="removeSplitSupplierRow(${rowId}, ${deficitIdx})" style="background:#fee2e2; color:#ef4444; border:none; padding:0.45rem; display:flex; align-items:center; justify-content:center;" title="حذف">
@@ -751,7 +751,7 @@
         paidInput.readOnly = false;
         paidInput.value = '0';
         dueDateGroup.style.visibility = 'visible';
-        dueDateInput.required = true;
+        dueDateInput.required = false;
 
         // Set 30 days in the future
         const d = new Date();
@@ -871,12 +871,6 @@
             return;
           }
 
-          if (supPaytype === 'آجل' && !dueDateVal) {
-            validated = false;
-            showAlert('يرجى تحديد تاريخ استحقاق الدفع الآجل للمورد: ' + supName, 'error');
-            return;
-          }
-
           sumQty += qtyVal;
 
           const computedUnitPrice = qtyVal > 0 ? totalPriceVal / qtyVal : 0;
@@ -957,7 +951,7 @@
               total_amount: s.price,
               paid_amount: s.paid,
               notes: `شراء خامة (${p.material_name}) لطلبية: ${displayName} [كمية ${s.quantity}، السعر الإجمالي ${s.price}]`,
-              due_date: s.payment_type === 'كاش' ? new Date().toISOString().split('T')[0] : s.due_date
+              due_date: s.payment_type === 'كاش' ? new Date().toISOString().split('T')[0] : (s.due_date || null)
             });
           });
 

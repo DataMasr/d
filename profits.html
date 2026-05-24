@@ -296,6 +296,69 @@
         }
       }
 
+      function parsePaymentHistory(text, defaultDate, defaultPaid) {
+        let purchaseDate = defaultDate ? (typeof defaultDate === 'string' ? defaultDate.substring(0, 10) : new Date(defaultDate).toISOString().substring(0, 10)) : '';
+        let history = [];
+        let cleanText = text || '';
+
+        const purchaseMatch = cleanText.match(/<!--PURCHASEDATE:(\d{4}-\d{2}-\d{2})-->/);
+        if (purchaseMatch) {
+          purchaseDate = purchaseMatch[1];
+          cleanText = cleanText.replace(/<!--PURCHASEDATE:\d{4}-\d{2}-\d{2}-->/g, '');
+        }
+
+        const historyMatch = cleanText.match(/<!--PAYHISTORY:(.*?)-->/);
+        if (historyMatch) {
+          try {
+            history = JSON.parse(historyMatch[1]);
+          } catch (e) {
+            console.error("Failed to parse pay history", e);
+          }
+          cleanText = cleanText.replace(/<!--PAYHISTORY:.*?-->/g, '');
+        } else {
+          let isRawInstallments = false;
+          try {
+            const rawPlan = JSON.parse(cleanText);
+            if (Array.isArray(rawPlan)) {
+              isRawInstallments = true;
+              let instSum = 0;
+              rawPlan.forEach(item => {
+                const amt = parseFloat(item.amount || 0);
+                const dt = item.date || purchaseDate || new Date().toISOString().substring(0, 10);
+                if (amt > 0) {
+                  history.push({ date: dt, amount: amt });
+                  instSum += amt;
+                }
+              });
+
+              const difference = defaultPaid - instSum;
+              if (difference > 0.01) {
+                history.push({
+                  date: purchaseDate || new Date().toISOString().substring(0, 10),
+                  amount: difference
+                });
+              }
+              cleanText = '';
+            }
+          } catch (e) {}
+
+          if (!isRawInstallments && defaultPaid > 0) {
+            history = [{
+              date: purchaseDate || new Date().toISOString().substring(0, 10),
+              amount: defaultPaid
+            }];
+          }
+        }
+
+        history.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        return {
+          purchaseDate: purchaseDate,
+          history: history,
+          cleanText: cleanText.trim()
+        };
+      }
+
       async function initProfitsPage() {
         await initAuth();
         const sb = getSupabase();
@@ -329,7 +392,7 @@
             totalRevenues = clients.reduce((sum, c) => sum + (parseFloat(c.total_price) || 0), 0);
           }
 
-          let payQuery = sb.from('accounts').select('paid_amount, created_at').eq('account_type', 'payable');
+          let payQuery = sb.from('accounts').select('*').eq('account_type', 'payable');
           if (dateFrom) payQuery = payQuery.gte('created_at', dateFrom.toISOString());
           if (dateTo) payQuery = payQuery.lte('created_at', dateTo.toISOString());
 
@@ -340,7 +403,6 @@
           }
 
           let expQuery = sb.from('expenses').select('*');
-
 
           if (dateFrom) {
             const dateStr = dateFrom.toISOString().split('T')[0];
@@ -355,21 +417,88 @@
           if (expError) throw expError;
 
           let totalExpenses = 0;
+          let allOutflows = [];
+
+          // 1. Add general expenses
+          if (expenses) {
+            expenses.forEach(exp => {
+              totalExpenses += (exp.amount || 0);
+              allOutflows.push({
+                date: exp.expense_date,
+                category: exp.category,
+                amount: exp.amount,
+                notes: exp.notes || '-',
+                isExpense: true,
+                timestamp: exp.created_at ? new Date(exp.created_at).getTime() : new Date(exp.expense_date).getTime()
+              });
+            });
+          }
+
+          // 2. Add supplier payments (from accounts payable history)
+          if (payables) {
+            payables.forEach(acc => {
+              const parsed = parsePaymentHistory(acc.notes, acc.created_at, acc.paid_amount || 0);
+              
+              if (parsed.history && parsed.history.length > 0) {
+                parsed.history.forEach(p => {
+                  let inRange = true;
+                  if (dateFrom && new Date(p.date) < dateFrom) inRange = false;
+                  if (dateTo && new Date(p.date) > dateTo) inRange = false;
+
+                  if (inRange) {
+                    allOutflows.push({
+                      date: p.date,
+                      category: `شراء خامات (${acc.person_name})`,
+                      amount: p.amount,
+                      notes: parsed.cleanText || `شراء خامات من المورد: ${acc.person_name}`,
+                      isExpense: false,
+                      timestamp: acc.created_at ? new Date(acc.created_at).getTime() : new Date(p.date).getTime()
+                    });
+                  }
+                });
+              } else if (acc.paid_amount > 0) {
+                const payDate = acc.created_at ? acc.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
+                let inRange = true;
+                if (dateFrom && new Date(payDate) < dateFrom) inRange = false;
+                if (dateTo && new Date(payDate) > dateTo) inRange = false;
+
+                if (inRange) {
+                  allOutflows.push({
+                    date: payDate,
+                    category: `شراء خامات (${acc.person_name})`,
+                    amount: acc.paid_amount,
+                    notes: parsed.cleanText || `شراء خامات من المورد: ${acc.person_name}`,
+                    isExpense: false,
+                    timestamp: acc.created_at ? new Date(acc.created_at).getTime() : new Date(payDate).getTime()
+                  });
+                }
+              }
+            });
+          }
+
+          // Sort chronological descending (newest first based on exact time of entry)
+          allOutflows.sort((a, b) => {
+            const timeA = a.timestamp || new Date(a.date).getTime();
+            const timeB = b.timestamp || new Date(b.date).getTime();
+            return timeB - timeA;
+          });
+
           const tbody = document.getElementById('expenses-table-body');
           tbody.innerHTML = '';
 
-          if (!expenses || expenses.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا يوجد مصروفات في هذه الفترة</td></tr>`;
+          if (allOutflows.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا يوجد مصروفات أو مدفوعات في هذه الفترة</td></tr>`;
           } else {
-            expenses.forEach(exp => {
-              totalExpenses += (exp.amount || 0);
-
+            allOutflows.forEach(outflow => {
               const tr = document.createElement('tr');
+              const categoryColor = outflow.isExpense 
+                ? 'background:var(--bg-card);color:var(--text-main);border:1px solid var(--border)'
+                : 'background:rgba(79, 70, 229, 0.08);color:var(--primary);border:1px solid rgba(79, 70, 229, 0.15)';
               tr.innerHTML = `
-                <td style="direction:ltr; text-align:right;">${exp.expense_date ? new Date(exp.expense_date).toLocaleDateString('ar-EG') : '-'}</td>
-                <td><span class="badge" style="background:var(--bg-card);color:var(--text-main);border:1px solid var(--border)">${exp.category}</span></td>
-                <td><strong style="color:var(--error)">${exp.amount}</strong></td>
-                <td>${exp.notes || '-'}</td>
+                <td style="direction:ltr; text-align:right;">${outflow.date ? new Date(outflow.date).toLocaleDateString('ar-EG') : '-'}</td>
+                <td><span class="badge" style="${categoryColor}">${outflow.category}</span></td>
+                <td><strong style="color:var(--error)">${outflow.amount.toLocaleString()} ج.م</strong></td>
+                <td>${outflow.notes || '-'}</td>
               `;
               tbody.appendChild(tr);
             });
