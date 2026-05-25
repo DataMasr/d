@@ -758,8 +758,9 @@
           showAlert('جاري حفظ الخامات...', 'pending');
           const sb = getSupabase();
 
-          // REVERT OLD TRACKED MATERIALS
+          // REVERT OLD TRACKED MATERIALS & REVERSE THEIR RECORDED EXPENSE
           const oldTracked = parseTrackedMaterials(order.material_notes);
+          let totalRevertedCost = 0;
           if (oldTracked.length > 0) {
             for (const oldMat of oldTracked) {
               if (oldMat.source !== 'external' && oldMat.deductedQty > 0) {
@@ -779,14 +780,30 @@
                     warehouse: whNames[oldMat.wh],
                     notes: `تعديل خامات: استرجاع رصيد ملغي للطلبية العميل: ${order.client_name}`
                   }]);
+
+                  // Calculate cost of reverted material to subtract from expenses
+                  const priceItem = pricesList.find(p => p.item_name === item.item_name);
+                  const oldMatPrice = priceItem ? (priceItem.piece_price || 0) : 0;
+                  totalRevertedCost += oldMat.deductedQty * oldMatPrice;
                 }
               }
             }
           }
 
+          if (totalRevertedCost > 0) {
+            const { error: expError } = await sb.from('expenses').insert([{
+              expense_date: new Date().toISOString().split('T')[0],
+              category: 'مرتجع خامات (تصنيع)',
+              amount: -totalRevertedCost,
+              notes: `تعديل خامات: استرداد تكلفة الخامات الملغاة لطلبية: ${order.client_name}`
+            }]);
+            if (expError) console.error("Failed to add material cost revert to expenses", expError);
+          }
+
           // DEDUCT NEW MATERIALS
           let fullMaterialNotes = [];
           let totalManufacturingCost = 0;
+          let totalStockConsumptionCost = 0;
 
           // Re-fetch latest inventory from DB to avoid race conditions after reverting
           const { data: latestInv } = await sb.from('inventory').select('*');
@@ -795,11 +812,6 @@
           for (const mat of materialsToProcess) {
             const item = inventoryItems.find(i => i.id === mat.itemId);
             if (!item) continue;
-
-            const priceItem = pricesList.find(p => p.item_name === item.item_name);
-            const piecePrice = priceItem ? (priceItem.piece_price || 0) : 0;
-            const cost = mat.qty * piecePrice;
-            totalManufacturingCost += cost;
 
             const currentQty = item[mat.wh] || 0;
             let newQty = currentQty;
@@ -818,6 +830,17 @@
                 newQty = 0;
               }
             }
+
+            const priceItem = pricesList.find(p => p.item_name === item.item_name);
+            const piecePrice = priceItem ? (priceItem.piece_price || 0) : 0;
+            
+            // Total manufacturing cost (for display and estimation) uses full requested quantity
+            const displayCost = mat.qty * piecePrice;
+            totalManufacturingCost += displayCost;
+
+            // Stock consumption cost (for financial ledger) uses actually drawn stock
+            const stockCost = deductedQty * piecePrice;
+            totalStockConsumptionCost += stockCost;
 
             const whNames = { wh_1_qty: 'مخزن 1', wh_2_qty: 'مخزن 2', wh_3_qty: 'مخزن 3' };
 
@@ -855,7 +878,7 @@
             const hasDraw = line.includes('تم سحب') && line.includes('من');
             const hasBuy = line.includes('تم طلب شراء') && line.includes('من');
             const hasDashes = line.trim() === '---------------------------';
-            const hasDeficit = line.includes('عجز (مطلوب شراء)');
+            const hasDeficit = line.includes('عجز');
             const hasIssue = line.includes('<!--MATERIAL_ISSUE:') || line.includes('مشكلة في الخامات (تم الإبلاغ عنها):');
             return !hasTrack && !hasCost && !hasDraw && !hasBuy && !hasDashes && !hasDeficit && !hasIssue;
           }).join('\n').trim();
@@ -901,11 +924,11 @@
             }
           }
 
-          if (totalManufacturingCost > 0) {
+          if (totalStockConsumptionCost > 0) {
             const { error: expError } = await sb.from('expenses').insert([{
               expense_date: new Date().toISOString().split('T')[0],
               category: 'تكلفة خامات (تصنيع)',
-              amount: totalManufacturingCost,
+              amount: totalStockConsumptionCost,
               notes: `تكلفة خامات مضافة للطلبية: ${order.client_name}`
             }]);
             if (expError) console.error("Failed to add material cost to expenses", expError);
@@ -1087,7 +1110,7 @@
             const hasDraw = line.includes('تم سحب') && line.includes('من');
             const hasBuy = line.includes('تم طلب شراء') && line.includes('من');
             const hasDashes = line.trim() === '---------------------------';
-            const hasDeficit = line.includes('عجز (مطلوب شراء)');
+            const hasDeficit = line.includes('عجز');
             const hasIssue = line.includes('<!--MATERIAL_ISSUE:') || line.includes('مشكلة في الخامات (تم الإبلاغ عنها):');
             const hasArchived = line.includes('<!--ARCHIVED_AT:');
             return !hasTrack && !hasCost && !hasDraw && !hasBuy && !hasDashes && !hasDeficit && !hasIssue && !hasArchived;
@@ -1144,7 +1167,7 @@
             const hasDraw = line.includes('تم سحب') && line.includes('من');
             const hasBuy = line.includes('تم طلب شراء') && line.includes('من');
             const hasDashes = line.trim() === '---------------------------';
-            const hasDeficit = line.includes('عجز (مطلوب شراء)');
+            const hasDeficit = line.includes('عجز');
             const hasIssue = line.includes('<!--MATERIAL_ISSUE:') || line.includes('مشكلة في الخامات (تم الإبلاغ عنها):');
             const hasArchived = line.includes('<!--ARCHIVED_AT:');
             return hasTrack || hasCost || hasDraw || hasBuy || hasDashes || hasDeficit || hasIssue || hasArchived;
@@ -1219,12 +1242,26 @@
 
         const select = document.getElementById('ret-material-item');
         select.innerHTML = '';
-        inventoryItems.forEach(item => {
+
+        const tracked = parseTrackedMaterials(order.material_notes);
+        const usedTracked = tracked.filter(t => t.deductedQty > 0 && t.source !== 'external');
+
+        if (usedTracked.length === 0) {
           const opt = document.createElement('option');
-          opt.value = item.id;
-          opt.textContent = item.item_name;
+          opt.value = '';
+          opt.textContent = '-- لا توجد خامات مسحوبة من المخزن للاسترجاع --';
           select.appendChild(opt);
-        });
+        } else {
+          usedTracked.forEach(u => {
+            const item = inventoryItems.find(i => i.id === u.itemId);
+            if (item) {
+              const opt = document.createElement('option');
+              opt.value = item.id;
+              opt.textContent = `${item.item_name} (المسحوب: ${u.deductedQty} من ${u.wh === 'wh_1_qty' ? 'مخزن 1' : u.wh === 'wh_2_qty' ? 'مخزن 2' : 'مخزن 3'})`;
+              select.appendChild(opt);
+            }
+          });
+        }
 
         openModal('return-material-modal');
       }
@@ -1237,8 +1274,12 @@
         const qtyToReturn = parseInt(document.getElementById('ret-material-qty').value || 0, 10);
 
         if (qtyToReturn <= 0) return;
+        if (!materialId) {
+          showAlert('خطأ: لا يوجد خامات مسحوبة للاسترجاع في هذه الطلبية.', 'error');
+          return;
+        }
 
-        const trackPattern = new RegExp(`<!--TRACK:${materialId}:(\\d+)-->`);
+        const trackPattern = new RegExp(`<!--TRACK:${materialId}:([0-9]+)(?::([a-zA-Z0-9_]+):([a-zA-Z]+):([0-9]+))?-->`);
         const match = oldNotes.match(trackPattern);
 
         if (!match) {
@@ -1248,7 +1289,7 @@
 
         const order = clientOrdersData.find(o => o.id === orderId);
 
-        const maxAllowed = parseInt(match[1], 10);
+        const maxAllowed = parseInt(match[4] || match[1], 10);
 
         const returnLines = oldNotes.split('\n').filter(line => line.includes('تم إرجاع') && line.includes(`<!--TRACK:${materialId}:`));
         let totalReturnedAlready = 0;

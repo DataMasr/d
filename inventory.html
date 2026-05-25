@@ -82,6 +82,7 @@
               <tr>
                 <th>اسم الصنف</th>
                 <th>وحدة القياس</th>
+                <th>متوسط سعر الوحدة</th>
                 <th>مخزن 1</th>
                 <th>مخزن 2</th>
                 <th>مخزن 3</th>
@@ -208,6 +209,12 @@
               </select>
             </div>
 
+            <!-- Price field -->
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label for="new-item-price">سعر الوحدة الافتراضي ج.م *</label>
+              <input type="number" id="new-item-price" min="0" step="any" required value="0" style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
+            </div>
+
             <!-- Opening Balances (remains common for both) -->
             <div class="form-group" style="margin-bottom: 1rem;">
               <label>الرصيد الافتتاحي (اختياري)</label>
@@ -265,6 +272,10 @@
                   <input type="number" id="edit-wh3" min="0" required style="width:100%">
                 </div>
               </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem; margin-top: 1rem;">
+              <label for="edit-item-price">سعر الوحدة (متوسط التكلفة) ج.م *</label>
+              <input type="number" id="edit-item-price" min="0" step="any" required style="width:100%; padding:0.45rem; border-radius:8px; border:1.5px solid var(--border); font-family:inherit; outline:none; background:#fff;">
             </div>
           </form>
         </div>
@@ -357,6 +368,7 @@
       document.getElementById('new-wh1').value = '';
       document.getElementById('new-wh2').value = '';
       document.getElementById('new-wh3').value = '';
+      document.getElementById('new-item-price').value = '0';
 
       // Reset toggles to defaults
       document.querySelector('input[name="item_category"][value="normal"]').checked = true;
@@ -374,6 +386,9 @@
       document.getElementById('edit-wh1').value = item.wh_1_qty || 0;
       document.getElementById('edit-wh2').value = item.wh_2_qty || 0;
       document.getElementById('edit-wh3').value = item.wh_3_qty || 0;
+
+      const priceInfo = (window.pricesMap && window.pricesMap[item.item_name]) || { unit: 'بالقطعة', price: 0 };
+      document.getElementById('edit-item-price').value = priceInfo.price || 0;
 
       openModal('edit-balances-modal');
     }
@@ -431,16 +446,19 @@
       try {
         showAlert('جاري حفظ الصنف...', 'pending');
 
+        const itemPrice = parseFloat(document.getElementById('new-item-price').value || 0);
+
         // 1. Insert or update the prices table so the unit of measurement is linked
         const { data: existingPrice } = await sb.from('prices').select('*').eq('item_name', name).limit(1);
         if (!existingPrice || existingPrice.length === 0) {
           const { error: priceErr } = await sb.from('prices').insert([{
             item_name: name,
-            unit: unit
+            unit: unit,
+            piece_price: itemPrice
           }]);
           if (priceErr) throw priceErr;
         } else {
-          const { error: priceErr } = await sb.from('prices').update({ unit: unit }).eq('item_name', name);
+          const { error: priceErr } = await sb.from('prices').update({ unit: unit, piece_price: itemPrice }).eq('item_name', name);
           if (priceErr) throw priceErr;
         }
 
@@ -490,6 +508,18 @@
         const diff1 = wh1 - (oldItem.wh_1_qty || 0);
         const diff2 = wh2 - (oldItem.wh_2_qty || 0);
         const diff3 = wh3 - (oldItem.wh_3_qty || 0);
+
+        const itemPrice = parseFloat(document.getElementById('edit-item-price').value || 0);
+
+        // Update price in prices table
+        const { data: priceRecord } = await sb.from('prices').select('id').eq('item_name', oldItem.item_name).maybeSingle();
+        if (priceRecord) {
+          const { error: priceErr } = await sb.from('prices').update({ piece_price: itemPrice }).eq('id', priceRecord.id);
+          if (priceErr) throw priceErr;
+        } else {
+          const { error: priceErr } = await sb.from('prices').insert([{ item_name: oldItem.item_name, piece_price: itemPrice, unit: 'بالقطعة' }]);
+          if (priceErr) throw priceErr;
+        }
 
         const { error } = await sb.from('inventory').update({
           wh_1_qty: wh1,
@@ -589,19 +619,23 @@
     function renderInventoryTable(data) {
       const tbody = document.getElementById('inventory-table-body');
       if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted); padding:2rem;">لا توجد نتائج تطابق البحث</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted); padding:2rem;">لا توجد نتائج تطابق البحث</td></tr>`;
         return;
       }
 
       tbody.innerHTML = '';
       data.forEach(item => {
         const total = (item.wh_1_qty || 0) + (item.wh_2_qty || 0) + (item.wh_3_qty || 0);
-        const unit = (window.pricesMap && window.pricesMap[item.item_name]) || '-';
+        const priceInfo = (window.pricesMap && window.pricesMap[item.item_name]) || { unit: 'بالقطعة', price: 0 };
+        const unit = priceInfo.unit || 'بالقطعة';
+        const price = priceInfo.price || 0;
         const unitBadge = `<span style="background:var(--primary-bg);color:var(--primary);padding:1px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;">${unit}</span>`;
+        const priceText = `<strong style="color:var(--primary); font-size:0.95rem;">${price.toLocaleString('ar-EG')} ج.م</strong>`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${item.item_name}</strong></td>
             <td>${unitBadge}</td>
+            <td>${priceText}</td>
             <td>${item.wh_1_qty || 0}</td>
             <td>${item.wh_2_qty || 0}</td>
             <td>${item.wh_3_qty || 0}</td>
@@ -632,11 +666,14 @@
       const tbody = document.getElementById('inventory-table-body');
 
       try {
-        // Fetch prices to populate window.pricesMap for units lookup
-        const { data: prices } = await sb.from('prices').select('item_name, unit');
+        // Fetch prices to populate window.pricesMap for units/price lookup
+        const { data: prices } = await sb.from('prices').select('item_name, unit, piece_price');
         window.pricesMap = {};
         (prices || []).forEach(p => {
-          window.pricesMap[p.item_name] = p.unit || 'بالقطعة';
+          window.pricesMap[p.item_name] = {
+            unit: p.unit || 'بالقطعة',
+            price: p.piece_price || 0
+          };
         });
 
         const { data, error } = await sb.from('inventory').select('*').order('created_at', { ascending: false });

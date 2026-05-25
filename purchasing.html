@@ -554,6 +554,23 @@
       }
     }
 
+    function parseTrackedMaterials(notes) {
+      if (!notes) return [];
+      const tracked = [];
+      const regex = /<!--TRACK:([a-zA-Z0-9\-]+):([0-9]+)(?::([a-zA-Z0-9_]+):([a-zA-Z]+):([0-9]+))?-->/g;
+      let match;
+      while ((match = regex.exec(notes)) !== null) {
+        tracked.push({
+          itemId: match[1],
+          qty: parseInt(match[2], 10),
+          wh: match[3] || 'wh_1_qty',
+          source: match[4] || 'inventory',
+          deductedQty: parseInt(match[5] || match[2], 10)
+        });
+      }
+      return tracked;
+    }
+
     async function loadSuppliersDatalist() {
       try {
         const sb = getSupabase();
@@ -924,6 +941,59 @@
         showAlert('جاري تسجيل المشتريات وتحديث المخزن والماليات...', 'pending');
         const sb = getSupabase();
 
+        // WAC Calculation & Update
+        for (const p of purchasesData) {
+          // Fetch current stock levels of this material
+          const { data: invData, error: invFetchErr } = await sb
+            .from('inventory')
+            .select('wh_1_qty, wh_2_qty, wh_3_qty')
+            .eq('item_name', p.material_name)
+            .maybeSingle();
+
+          if (invFetchErr) throw new Error(`فشل جلب رصيد المخزن الحالي لـ ${p.material_name}: ${invFetchErr.message}`);
+
+          const Q_old = invData ? ((invData.wh_1_qty || 0) + (invData.wh_2_qty || 0) + (invData.wh_3_qty || 0)) : 0;
+          const Q_old_clean = Q_old > 0 ? Q_old : 0;
+
+          // Fetch current price
+          const { data: priceData, error: priceFetchErr } = await sb
+            .from('prices')
+            .select('id, piece_price')
+            .eq('item_name', p.material_name)
+            .maybeSingle();
+
+          if (priceFetchErr) throw new Error(`فشل جلب السعر الحالي لـ ${p.material_name}: ${priceFetchErr.message}`);
+
+          const P_old = priceData ? (priceData.piece_price || 0) : 0;
+
+          // New purchase info
+          const Q_new = p.quantity;
+          const C_new = p.suppliers.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+
+          // Calculate new Weighted Average Price
+          const newPrice = (Q_old_clean + Q_new > 0)
+            ? ((Q_old_clean * P_old) + C_new) / (Q_old_clean + Q_new)
+            : P_old;
+
+          // Update or insert price record in database
+          if (priceData) {
+            const { error: priceUpdErr } = await sb
+              .from('prices')
+              .update({ piece_price: Number(newPrice.toFixed(2)) })
+              .eq('id', priceData.id);
+            if (priceUpdErr) throw new Error(`فشل تحديث سعر ${p.material_name}: ${priceUpdErr.message}`);
+          } else {
+            const { error: priceInsErr } = await sb
+              .from('prices')
+              .insert([{
+                item_name: p.material_name,
+                piece_price: Number(newPrice.toFixed(2)),
+                unit: 'بالقطعة'
+              }]);
+            if (priceInsErr) throw new Error(`فشل إدخال سعر ${p.material_name}: ${priceInsErr.message}`);
+          }
+        }
+
         const displayName = order.order_display_name || order.client_name || '-';
         let lines = (order.material_notes || '').split('\n');
         let logsToInsert = [];
@@ -932,7 +1002,7 @@
 
         purchasesData.forEach(p => {
           const line = lines[p.index];
-          const purchasedLine = line.replace(/\[عجز \(معتمد للشراء\):\s*\d+\]/g, 'تم الشراء ✅');
+          const purchasedLine = line.replace(/\[عجز \(معتمد للشراء\):\s*(\d+)\]/g, (match, qty) => `[تم شراء عجز: ${qty}] ✅`);
           lines[p.index] = purchasedLine;
 
           // For each supplier, add to inventory logs
@@ -982,6 +1052,47 @@
             created_by: currentUser ? currentUser.id : null
           });
         });
+
+        // Re-calculate the actual manufacturing cost based on the actual purchase price paid
+        let newManufacturingCost = 0;
+        try {
+          const { data: invItems } = await sb.from('inventory').select('id, item_name');
+          const { data: pricesList } = await sb.from('prices').select('item_name, piece_price');
+          
+          if (invItems && pricesList) {
+            const trackedMats = parseTrackedMaterials(order.material_notes);
+            for (const t of trackedMats) {
+              const item = invItems.find(i => i.id === t.itemId);
+              if (!item) continue;
+              
+              const priceItem = pricesList.find(p => p.item_name === item.item_name);
+              const piecePrice = priceItem ? (priceItem.piece_price || 0) : 0;
+              
+              // 1. Stock consumption cost
+              newManufacturingCost += t.deductedQty * piecePrice;
+              
+              // 2. Shortage cost (actual purchase price if bought now, otherwise estimated old price)
+              const pData = purchasesData.find(p => p.material_name === item.item_name);
+              if (pData) {
+                const actualPurchaseCost = pData.suppliers.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+                newManufacturingCost += actualPurchaseCost;
+              } else {
+                const shortageQty = t.qty - t.deductedQty;
+                if (shortageQty > 0) {
+                  newManufacturingCost += shortageQty * piecePrice;
+                }
+              }
+            }
+          }
+        } catch (calcErr) {
+          console.warn("Failed to calculate new manufacturing cost:", calcErr);
+        }
+
+        // Clean up old cost lines and append the new exact cost
+        lines = lines.filter(line => !line.includes('إجمالي تكلفة التصنيع'));
+        if (newManufacturingCost > 0) {
+          lines.push(`| إجمالي تكلفة التصنيع: ${newManufacturingCost} جنيه`);
+        }
 
         // 1. Update order notes & stage
         const newNotes = lines.join('\n');
